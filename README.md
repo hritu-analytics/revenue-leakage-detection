@@ -22,25 +22,25 @@
 
 ## 🚨 The Problem Nobody Talks About
 
-Every SaaS company tracks **churn** — the moment a customer cancels. But they almost never track **silent revenue leakage**: the slow, invisible loss of revenue from customers who *stay* but pay less than they should.
+Every SaaS company tracks **churn** — the moment a customer cancels. But they rarely track **silent revenue leakage**: the slow, invisible loss of revenue from customers who *stay* but pay less than they should.
 
 This is a massive blind spot. According to industry research, **SaaS companies lose 5-15% of recurring revenue to silent leakage annually**, yet fewer than 12% actively monitor for it.
 
 ### What is Silent Revenue Leakage?
 
-It's revenue you *should* be collecting but aren't — and you don't even know it's happening because the customer hasn't churned. They're still in your system, still "active," but paying less, using less, or sitting on pricing errors nobody caught.
+It's revenue you *should* be collecting but aren't, and you don't even know it's happening because the customer hasn't churned. They're still in your system, still "active," but paying less, using less, or sitting on pricing errors nobody caught.
 
 ---
 
 ## 🔎 How I Discovered This
 
-While analyzing customer subscription data for a B2B SaaS platform, I noticed something unusual:
+While analysing customer subscription data for a B2B SaaS platform, I noticed something unusual:
 
 1. **MRR was growing** — but slower than new customer acquisition would suggest
-2. **Churn rate was low** (3.2%) — yet net revenue retention was only 94%
+2. **Churn rate was low** (3.2%), yet net revenue retention was only 94%
 3. **The gap** between gross additions and net growth couldn't be explained by cancellations alone
 
-I dug into the transactional data and found **four distinct categories of revenue loss** that were invisible to standard reporting. None of these customers had "churned" — they were all still active.
+I dug into the transactional data and found **four distinct categories of revenue loss** that were invisible to standard reporting. None of these customers had "churned"; they were all still active.
 
 ---
 
@@ -50,7 +50,7 @@ I dug into the transactional data and found **four distinct categories of revenu
 This analysis uses the **[Telco Customer Churn dataset from IBM/Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)** as the foundational dataset, enriched and extended with realistic synthetic data to simulate a B2B SaaS environment.
 
 **Why this dataset?**
-- It's a credible, widely-recognized dataset from IBM's sample datasets
+- It's a credible, widely recognised dataset from IBM's sample datasets
 - Contains real subscription patterns, tenure data, pricing tiers, and service usage
 - Has the right structure (monthly charges, contract types, multiple services) to simulate revenue leakage scenarios
 
@@ -69,8 +69,8 @@ I transformed the raw telco data into a SaaS context:
 Step 1: Data Cleaning & Transformation (SQL + Python)
 Step 2: Leakage Classification Algorithm (Python)
 Step 3: Risk Scoring Model (weighted multi-factor)
-Step 4: Recovery Prioritization Matrix (business impact × recoverability)
-Step 5: Dashboard Visualization (Power BI / HTML)
+Step 4: Recovery Prioritisation Matrix (business impact × recoverability)
+Step 5: Dashboard Visualisation (Power BI / HTML)
 ```
 
 ---
@@ -114,7 +114,7 @@ ORDER BY annual_leakage DESC;
 **Key insight:** 8.3% of all invoices had discrepancies. The most common cause was add-on services that were provisioned but never billed (43% of errors).
 
 ### 4. 🔇 Feature Underutilization (23% — $195K)
-**What it is:** Customers paying for premium features they're not using — a leading indicator of future churn or downgrade.
+**What it is:** Customers paying for premium features they're not using is a leading indicator of future churn or downgrade.
 
 **How I found it:** Created a `feature_adoption_score` (0-100) based on login frequency, feature usage breadth, and API call volume vs. entitlement.
 
@@ -142,7 +142,7 @@ def calculate_adoption_score(customer):
 | Projected Annual Impact | **$1.37M** | If recovery framework is maintained |
 
 ### The Pareto Finding
-**20% of at-risk accounts represented 68% of total leakage value.** This allowed us to prioritize recovery efforts for maximum ROI — focusing the CS team on just 28 accounts to recover over $575K.
+20% of at-risk accounts accounted for 68% of total leakage value.** This allowed us to prioritise recovery efforts for maximum ROI, focusing the CS team on just 28 accounts to recover over $575K.
 
 ---
 
@@ -172,10 +172,10 @@ I didn't just identify the problem — I built a systematic recovery pipeline:
 ## 💡 Business Impact & Recommendations
 
 ### Immediate Actions Taken:
-1. **Automated pricing drift alerts** — flagging accounts >10% below list price 60 days before renewal
-2. **Downgrade intervention workflow** — triggering CSM outreach within 24 hours of any plan reduction
-3. **Monthly billing reconciliation** — automated script matching invoices to entitlements
-4. **Feature adoption scorecards** — weekly health scores surfaced in CRM for CSM review
+1. **Automated pricing drift alerts** :flagging accounts >10% below list price 60 days before renewal
+2. **Downgrade intervention workflow**: triggering CSM outreach within 24 hours of any plan reduction
+3. **Monthly billing reconciliation** : automated script matching invoices to entitlements
+4. **Feature adoption scorecards**: weekly health scores surfaced in CRM for CSM review
 
 ### Strategic Recommendations:
 1. **Implement a Revenue Integrity function** — a dedicated analyst role focused on leakage detection (estimated ROI: 8-12x)
@@ -204,7 +204,7 @@ I didn't just identify the problem — I built a systematic recovery pipeline:
 Open `revenue-leakage-dashboard.html` in any modern browser — no server required. Features:
 - Animated KPI cards with count-up effects
 - Interactive month selectors and filter chips
-- Bar chart, donut chart, progress bars, and data table
+- Bar chart, doughnut chart, progress bars, and data table
 - Responsive hover effects and micro-interactions
 
 ### Power BI Dashboard
@@ -228,7 +228,7 @@ Data transformation and the adoption scoring model are in `/notebooks`.
 1. **The biggest revenue opportunities aren't in acquiring new customers** — they're in plugging the leaks in your existing base.
 2. **Standard churn analysis is incomplete.** If you're only tracking cancellations, you're missing 60%+ of revenue loss.
 3. **Data quality is the foundation.** The billing reconciliation alone required cleaning 15,000+ invoice records.
-4. **Visualizing urgency drives action.** The dashboard wasn't just for analysis — it was designed to make stakeholders *feel* the leakage and act on it.
+4. **Visualising urgency drives action.** The dashboard wasn't just for analysis — it was designed to make stakeholders *feel* the leakage and act on it.
 5. **Always quantify in dollars.** "142 at-risk accounts" gets a nod. "$847K in leakage" gets a budget.
 
 ---
