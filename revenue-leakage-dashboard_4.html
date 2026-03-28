@@ -1,0 +1,1032 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revenue Leakage Detection — SaaS Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #eef2fb;
+  --sidebar-deep: #070d2b;
+  --sidebar-dark: #0b1437;
+  --sidebar-mid: #111c44;
+  --sidebar-hover: #1f2e5e;
+  --white: #ffffff;
+  --card-border: #e2e8f4;
+  --card-shadow: 0 1px 3px rgba(11,20,55,0.05), 0 2px 10px rgba(11,20,55,0.03);
+  --card-hover-shadow: 0 6px 20px rgba(11,20,55,0.09), 0 12px 40px rgba(11,20,55,0.05);
+  --text-primary: #0b1437;
+  --text-secondary: #6b7a99;
+  --text-muted: #a3b1cc;
+  --blue-600: #3956e5;
+  --blue-500: #4a6cf7;
+  --blue-400: #698bfa;
+  --blue-300: #93abfc;
+  --blue-100: #dbe4ff;
+  --blue-50: #f0f4ff;
+  --green-500: #05cd99;
+  --green-400: #34d9ad;
+  --green-bg: #e6faf4;
+  --red-500: #f56565;
+  --red-bg: #fff0f0;
+  --orange-500: #f6ad55;
+  --orange-bg: #fff8ee;
+  --font: 'Plus Jakarta Sans', -apple-system, sans-serif;
+}
+html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: var(--font); background: var(--bg); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+.app { display: flex; width: 100vw; height: 100vh; }
+
+/* ── SIDEBAR ── */
+.sidebar { width: 234px; min-width: 234px; height: 100vh; background: linear-gradient(180deg, var(--sidebar-deep) 0%, var(--sidebar-dark) 40%, var(--sidebar-mid) 100%); display: flex; flex-direction: column; position: relative; z-index: 10; }
+.sidebar::after { content: ''; position: absolute; right: 0; top: 0; width: 1px; height: 100%; background: linear-gradient(180deg, rgba(74,108,247,0.15), rgba(74,108,247,0.05)); }
+.logo-box { padding: 20px 22px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #4a6cf7, #3956e5); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; animation: float 3s ease-in-out infinite; }
+.logo-icon svg { width: 18px; height: 18px; }
+.logo-box h1 { font-size: 14px; font-weight: 800; color: var(--white); letter-spacing: -0.3px; }
+.logo-box p { font-size: 10.5px; font-weight: 400; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.nav-section { padding: 14px 12px 8px; flex: 1; }
+.nav-label { font-size: 9.5px; font-weight: 700; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 1.2px; padding: 0 10px; margin-bottom: 6px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 9px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.55); cursor: pointer; transition: all 0.2s ease; margin-bottom: 1px; opacity: 0; transform: translateY(12px); animation: fadeUp 0.45s ease forwards; }
+.nav-item:nth-child(2){animation-delay:.08s}.nav-item:nth-child(3){animation-delay:.14s}.nav-item:nth-child(4){animation-delay:.20s}.nav-item:nth-child(5){animation-delay:.26s}.nav-item:nth-child(6){animation-delay:.32s}.nav-item:nth-child(7){animation-delay:.38s}.nav-item:nth-child(8){animation-delay:.44s}
+.nav-item svg { width: 17px; height: 17px; opacity: 0.6; flex-shrink: 0; }
+.nav-item:hover { background: var(--sidebar-hover); color: rgba(255,255,255,0.85); }
+.nav-item.active { background: linear-gradient(135deg, rgba(74,108,247,0.22), rgba(74,108,247,0.08)); color: var(--white); box-shadow: 0 0 0 1px rgba(74,108,247,0.25); }
+.nav-item.active svg { opacity: 1; }
+.nav-item .badge { margin-left: auto; background: var(--red-500); color: var(--white); font-size: 9.5px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
+.sidebar-bottom { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+.raw-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 9px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); font-size: 11.5px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.2s; }
+.raw-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.2); }
+.raw-btn svg { width: 15px; height: 15px; }
+
+/* ── MAIN ── */
+.main { flex: 1; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px 0; flex-shrink: 0; }
+.topbar h2 { font-size: 20px; line-height: 1.1; }
+.topbar h2 .light { font-weight: 400; color: var(--text-secondary); }
+.topbar h2 .bold { font-weight: 800; color: var(--text-primary); }
+.month-pills { display: flex; gap: 3px; background: var(--white); border-radius: 9px; padding: 3px; border: 1px solid var(--card-border); }
+.month-pill { padding: 5px 13px; border-radius: 7px; font-size: 11px; font-weight: 600; font-family: var(--font); border: none; cursor: pointer; background: transparent; color: var(--text-secondary); transition: all 0.2s; }
+.month-pill:hover { color: var(--text-primary); }
+.month-pill.active { background: var(--blue-500); color: var(--white); box-shadow: 0 2px 8px rgba(74,108,247,0.3); }
+.filter-bar { display: flex; align-items: center; gap: 8px; padding: 10px 24px 0; flex-shrink: 0; }
+.filter-chip { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; background: var(--white); border: 1px solid var(--card-border); font-size: 11px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; font-family: var(--font); }
+.filter-chip:hover { border-color: var(--blue-400); color: var(--text-primary); }
+.filter-chip svg { width: 13px; height: 13px; opacity: 0.5; }
+.filter-chip.af { background: var(--blue-50); border-color: var(--blue-300); color: var(--blue-600); font-weight: 600; }
+.content { flex: 1; overflow: hidden; padding: 12px 24px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ── KPI ── */
+.kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; flex-shrink: 0; }
+.kpi-card { border-radius: 13px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); cursor: pointer; transition: transform .25s, box-shadow .25s; opacity: 0; transform: scale(0.92); animation: scaleIn .5s cubic-bezier(.34,1.56,.64,1) forwards; position: relative; overflow: hidden; }
+.kpi-card:hover { transform: translateY(-3px) scale(1.01); box-shadow: var(--card-hover-shadow); }
+.kpi-card:nth-child(1){background:linear-gradient(135deg,#f0f4ff,#e4eaff);animation-delay:.15s}
+.kpi-card:nth-child(2){background:linear-gradient(135deg,#edf9f5,#d9f5ec);animation-delay:.25s}
+.kpi-card:nth-child(3){background:linear-gradient(135deg,#fff8ee,#ffeed4);animation-delay:.35s}
+.kpi-card:nth-child(4){background:linear-gradient(135deg,#fff0f0,#ffe0e0);animation-delay:.45s}
+.kpi-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.4px; }
+.kpi-value { font-size: 24px; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+.kpi-delta { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; margin-top: 5px; }
+.kpi-delta.up { background: var(--green-bg); color: var(--green-500); }
+.kpi-delta.down { background: var(--red-bg); color: var(--red-500); }
+.kpi-delta svg { width: 11px; height: 11px; }
+.kpi-icon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; animation: float 3.5s ease-in-out infinite; }
+.kpi-icon svg { width: 20px; height: 20px; color: var(--white); }
+.kpi-card:nth-child(1) .kpi-icon{background:linear-gradient(135deg,#4a6cf7,#3956e5);animation-delay:0s}
+.kpi-card:nth-child(2) .kpi-icon{background:linear-gradient(135deg,#05cd99,#04b587);animation-delay:.8s}
+.kpi-card:nth-child(3) .kpi-icon{background:linear-gradient(135deg,#f6ad55,#e8993f);animation-delay:1.6s}
+.kpi-card:nth-child(4) .kpi-icon{background:linear-gradient(135deg,#f56565,#e04d4d);animation-delay:2.4s}
+
+/* ── CARDS ── */
+.card { background: var(--white); border-radius: 13px; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); padding: 14px 16px; display: flex; flex-direction: column; transition: transform .25s, box-shadow .25s; overflow: hidden; }
+.card:hover { transform: translateY(-2px); box-shadow: var(--card-hover-shadow); }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; }
+.card-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.card-subtitle { font-size: 10px; font-weight: 400; color: var(--text-muted); }
+.card-badge { font-size: 9.5px; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: var(--blue-50); color: var(--blue-500); }
+
+/* ── CHART GRID ── */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+.chart-large { grid-row: 1/3; }
+.chart-area { flex: 1; position: relative; min-height: 0; }
+.right-stack { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+/* Bar Chart */
+.bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 100%; padding-top: 8px; }
+.bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.bar-pair { display: flex; gap: 3px; align-items: flex-end; width: 100%; justify-content: center; flex: 1; }
+.bar { width: 12px; border-radius: 3px 3px 1px 1px; transform-origin: bottom; transform: scaleY(0); animation: barRise .7s cubic-bezier(.34,1.3,.64,1) forwards; }
+.bar.primary { background: linear-gradient(180deg, var(--blue-400), var(--blue-600)); }
+.bar.secondary { background: linear-gradient(180deg, var(--green-400), var(--green-500)); }
+.bar-label { font-size: 9px; font-weight: 600; color: var(--text-muted); margin-top: 5px; }
+.gridlines { position: absolute; top: 0; left: 0; right: 0; bottom: 22px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.gridline { height: 1px; background: #f0f3fa; position: relative; }
+.gridline-label { position: absolute; left: -4px; top: -6px; font-size: 8px; font-weight: 600; color: var(--text-muted); transform: translateX(-100%); padding-right: 5px; }
+.chart-legend { display: flex; gap: 14px; position: absolute; bottom: 0; right: 0; }
+.chart-legend-item { display: flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; color: var(--text-muted); }
+.chart-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* Donut */
+.donut-wrap { display: flex; align-items: center; gap: 14px; flex: 1; min-height: 0; }
+.donut-container { width: 100px; height: 100px; flex-shrink: 0; position: relative; }
+.donut-container svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+.donut-center .val { font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.donut-center .lbl { font-size: 8px; font-weight: 600; color: var(--text-muted); }
+.donut-legend { display: flex; flex-direction: column; gap: 5px; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 500; color: var(--text-secondary); }
+.legend-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+.legend-val { margin-left: auto; font-weight: 700; color: var(--text-primary); min-width: 30px; text-align: right; }
+
+/* Progress */
+.progress-list { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: center; }
+.progress-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.progress-label { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); }
+.progress-val { font-size: 10.5px; font-weight: 800; color: var(--text-primary); }
+.progress-track { height: 6px; border-radius: 3px; background: #f0f3fa; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transform-origin: left; transform: scaleX(0); animation: slideRight .8s cubic-bezier(.25,.46,.45,.94) forwards; }
+
+/* ── BOTTOM ROW ── */
+.bottom-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; flex-shrink: 0; }
+.data-table-wrap { overflow: hidden; flex: 1; }
+table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+thead th { text-align: left; padding: 5px 7px; font-weight: 700; font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--card-border); }
+tbody td { padding: 5.5px 7px; font-weight: 500; color: var(--text-secondary); border-bottom: 1px solid #f5f7fc; }
+tbody tr:last-child td { border-bottom: none; }
+tbody td:first-child { font-weight: 700; color: var(--text-primary); }
+.status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.status-dot.critical { background: var(--red-500); }
+.status-dot.warning { background: var(--orange-500); }
+.status-dot.healthy { background: var(--green-500); }
+.impact-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.impact-badge.high { background: var(--red-bg); color: var(--red-500); }
+.impact-badge.medium { background: var(--orange-bg); color: var(--orange-500); }
+.impact-badge.low { background: var(--green-bg); color: var(--green-500); }
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
+.summary-box { border-radius: 9px; padding: 10px 12px; display: flex; flex-direction: column; justify-content: center; }
+.summary-box:nth-child(1) { background: var(--blue-50); border: 1px solid var(--blue-100); }
+.summary-box:nth-child(2) { background: var(--green-bg); border: 1px solid #c6f0e1; }
+.summary-box:nth-child(3) { background: var(--orange-bg); border: 1px solid #ffe6c8; }
+.summary-box:nth-child(4) { background: var(--red-bg); border: 1px solid #ffd4d4; }
+.s-label { font-size: 9px; font-weight: 600; color: var(--text-secondary); margin-bottom: 1px; }
+.s-value { font-size: 17px; font-weight: 800; color: var(--text-primary); }
+.s-sub { font-size: 9px; font-weight: 500; color: var(--text-muted); margin-top: 1px; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes barRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes slideRight { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.bar-group:hover .bar { filter: brightness(1.1); }
+.page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.page.active { display: flex; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo-box">
+      <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg></div>
+      <h1>LeakGuard AI</h1>
+      <p>Revenue Intelligence</p>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-label">Analytics</div>
+      <div class="nav-item active" data-page="page-overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Overview</div>
+      <div class="nav-item" data-page="page-funnel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>Leakage Funnel<span class="badge">3</span></div>
+      <div class="nav-item" data-page="page-cohort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>Cohort Analysis</div>
+      <div class="nav-item" data-page="page-health"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Customer Health</div>
+      <div class="nav-label" style="margin-top:12px">Intelligence</div>
+      <div class="nav-item" data-page="page-pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg>Pricing Drift</div>
+      <div class="nav-item" data-page="page-playbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>Recovery Playbook</div>
+      <div class="nav-item" data-page="page-root"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg>Root Cause Explorer</div>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="raw-btn" id="download-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download Dashboard</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h2><span class="light">Revenue </span><span class="bold">Leakage Detection</span></h2>
+      <div class="month-pills">
+        <button class="month-pill">Aug</button><button class="month-pill">Sep</button><button class="month-pill active">Oct</button><button class="month-pill">Nov</button><button class="month-pill">Dec</button><button class="month-pill">Jan</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-chip af"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>All Segments</div>
+      <div class="filter-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>Plan: Enterprise</div>
+      <div class="filter-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>Region: All</div>
+      <div class="filter-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Q4 FY2025</div>
+      <div class="filter-chip" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>Refresh</div>
+    </div>
+
+    <div class="page active" id="page-overview">
+    <div class="content">
+      <!-- KPI ROW -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <div class="kpi-label">Total Leakage Detected</div>
+            <div class="kpi-value" data-target="847500" data-prefix="$" data-format="comma" data-current="847500">$847,500</div>
+            <div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>12.4% vs Q3</div>
+          </div>
+          <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <div class="kpi-label">Revenue Recovered</div>
+            <div class="kpi-value" data-target="523200" data-prefix="$" data-format="comma" data-current="523200">$523,200</div>
+            <div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>34.7% vs Q3</div>
+          </div>
+          <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <div class="kpi-label">Accounts at Risk</div>
+            <div class="kpi-value" data-target="142" data-prefix="" data-format="plain" data-current="142">142</div>
+            <div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>8 new this week</div>
+          </div>
+          <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-info">
+            <div class="kpi-label">Recovery Rate</div>
+            <div class="kpi-value" data-target="61.7" data-prefix="" data-suffix="%" data-format="decimal" data-current="61.7">61.7%</div>
+            <div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>+5.2pp vs Q3</div>
+          </div>
+          <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+        </div>
+      </div>
+
+      <!-- CHART GRID -->
+      <div class="chart-grid">
+        <div class="card chart-large">
+          <div class="card-header">
+            <div><div class="card-title">Leakage vs Recovery Trend</div><div class="card-subtitle">Monthly comparison across leakage categories</div></div>
+            <div class="card-badge">6 Months</div>
+          </div>
+          <div class="chart-area">
+            <div class="gridlines">
+              <div class="gridline"><span class="gridline-label">$848K</span></div>
+              <div class="gridline"><span class="gridline-label">$636K</span></div>
+              <div class="gridline"><span class="gridline-label">$424K</span></div>
+              <div class="gridline"><span class="gridline-label">$212K</span></div>
+              <div class="gridline"><span class="gridline-label">$0</span></div>
+            </div>
+            <div class="bar-chart" style="padding-left:32px;">
+              <div class="bar-group"><div class="bar-pair"><div class="bar primary" style="height: 63%; opacity: 0.45;"></div><div class="bar secondary" style="height: 18%; opacity: 0.45;"></div></div><div class="bar-label">Aug</div></div>
+              <div class="bar-group"><div class="bar-pair"><div class="bar primary" style="height: 72%; opacity: 0.45;"></div><div class="bar secondary" style="height: 26%; opacity: 0.45;"></div></div><div class="bar-label">Sep</div></div>
+              <div class="bar-group"><div class="bar-pair"><div class="bar primary" style="height: 87%; opacity: 1;"></div><div class="bar secondary" style="height: 54%; opacity: 1;"></div></div><div class="bar-label">Oct</div></div>
+              <div class="bar-group"><div class="bar-pair"><div class="bar primary" style="height: 79%; opacity: 0.45;"></div><div class="bar secondary" style="height: 46%; opacity: 0.45;"></div></div><div class="bar-label">Nov</div></div>
+              <div class="bar-group"><div class="bar-pair"><div class="bar primary" style="height: 95%; opacity: 0.45;"></div><div class="bar secondary" style="height: 61%; opacity: 0.45;"></div></div><div class="bar-label">Dec</div></div>
+              <div class="bar-group"><div class="bar-pair"><div class="bar primary" style="height: 74%; opacity: 0.45;"></div><div class="bar secondary" style="height: 38%; opacity: 0.45;"></div></div><div class="bar-label">Jan</div></div>
+            </div>
+            <div class="chart-legend">
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--blue-500)"></div>Leakage</div>
+              <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--green-500)"></div>Recovered</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="right-stack">
+          <div class="card" style="flex:1">
+            <div class="card-header"><div class="card-title">Leakage by Category</div><div class="card-badge">4 Types</div></div>
+            <div class="donut-wrap">
+              <div class="donut-container">
+                <svg viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#f0f3fa" stroke-width="11"></circle>
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#4a6cf7" stroke-width="11" stroke-dasharray="105.5 196" stroke-dashoffset="0" style="opacity:0;animation:fadeIn .5s ease .6s forwards"></circle>
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#05cd99" stroke-width="11" stroke-dasharray="66.3 235.2" stroke-dashoffset="-105.5" style="opacity:0;animation:fadeIn .5s ease .8s forwards"></circle>
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#f6ad55" stroke-width="11" stroke-dasharray="60.2 241.3" stroke-dashoffset="-171.8" style="opacity:0;animation:fadeIn .5s ease 1s forwards"></circle>
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#f56565" stroke-width="11" stroke-dasharray="69.5 232" stroke-dashoffset="-232" style="opacity:0;animation:fadeIn .5s ease 1.2s forwards"></circle>
+                </svg>
+                <div class="donut-center"><div class="val" data-target="847.5" data-prefix="$" data-suffix="K" data-format="decimal" data-current="847.5">$847.5K</div><div class="lbl">TOTAL</div></div>
+              </div>
+              <div class="donut-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#4a6cf7"></div>Pricing Drift<span class="legend-val">35%</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#05cd99"></div>Silent Downgrades<span class="legend-val">22%</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f6ad55"></div>Billing Errors<span class="legend-val">20%</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f56565"></div>Feature Underuse<span class="legend-val">23%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="flex:1">
+            <div class="card-header"><div class="card-title">Recovery Pipeline</div><div class="card-badge">Active</div></div>
+            <div class="progress-list">
+              <div class="progress-item"><div class="progress-head"><span class="progress-label">Identified &amp; Queued</span><span class="progress-val">$312K</span></div><div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--blue-500);animation-delay:.7s"></div></div></div>
+              <div class="progress-item"><div class="progress-head"><span class="progress-label">Outreach Initiated</span><span class="progress-val">$218K</span></div><div class="progress-track"><div class="progress-fill" style="width:70%;background:var(--green-500);animation-delay:.9s"></div></div></div>
+              <div class="progress-item"><div class="progress-head"><span class="progress-label">Negotiation Phase</span><span class="progress-val">$147K</span></div><div class="progress-track"><div class="progress-fill" style="width:47%;background:var(--orange-500);animation-delay:1.1s"></div></div></div>
+              <div class="progress-item"><div class="progress-head"><span class="progress-label">Revenue Recovered</span><span class="progress-val">$523K</span></div><div class="progress-track"><div class="progress-fill" style="width:62%;background:linear-gradient(90deg,var(--green-500),var(--blue-500));animation-delay:1.3s"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW -->
+      <div class="bottom-row">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Top At-Risk Accounts</div><div class="card-badge">Actionable</div></div>
+          <div class="data-table-wrap">
+            <table>
+              <thead><tr><th>Account</th><th>ARR</th><th>Leakage Type</th><th>Amount</th><th>Status</th><th>Impact</th></tr></thead>
+              <tbody>
+                <tr><td>NovaTech Solutions</td><td>$186K</td><td><span class="status-dot critical"></span>Pricing Drift</td><td style="font-weight:700;color:var(--red-500)">$42,300</td><td>Escalated</td><td><span class="impact-badge high">High</span></td></tr>
+                <tr><td>Meridian Data Co.</td><td>$124K</td><td><span class="status-dot warning"></span>Silent Downgrade</td><td style="font-weight:700;color:var(--orange-500)">$28,750</td><td>In Review</td><td><span class="impact-badge high">High</span></td></tr>
+                <tr><td>Apex Cloud Inc.</td><td>$97K</td><td><span class="status-dot critical"></span>Billing Error</td><td style="font-weight:700;color:var(--red-500)">$18,200</td><td>Queued</td><td><span class="impact-badge medium">Med</span></td></tr>
+                <tr><td>Vantage Analytics</td><td>$210K</td><td><span class="status-dot healthy"></span>Feature Underuse</td><td style="font-weight:700;color:var(--orange-500)">$15,600</td><td>Monitoring</td><td><span class="impact-badge low">Low</span></td></tr>
+                <tr><td>BluePeak Systems</td><td>$78K</td><td><span class="status-dot warning"></span>Pricing Drift</td><td style="font-weight:700;color:var(--orange-500)">$12,400</td><td>Outreach</td><td><span class="impact-badge medium">Med</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Recovery Overview</div><div class="card-badge">Q4 FY25</div></div>
+          <div class="summary-grid">
+            <div class="summary-box"><div class="s-label">Net Revenue Impact</div><div class="s-value" data-target="1.37" data-prefix="$" data-suffix="M" data-format="decimal" data-current="1.37">$1.37M</div><div class="s-sub">Annual projected savings</div></div>
+            <div class="summary-box"><div class="s-label">Accounts Recovered</div><div class="s-value" data-target="89" data-format="plain" data-current="89">89</div><div class="s-sub">Out of 142 flagged</div></div>
+            <div class="summary-box"><div class="s-label">Avg. Recovery Time</div><div class="s-value" data-target="14" data-suffix=" days" data-format="plain" data-current="14">14 days</div><div class="s-sub">Down from 23 days</div></div>
+            <div class="summary-box"><div class="s-label">Churn Prevented</div><div class="s-value" data-target="31" data-format="plain" data-current="31">31</div><div class="s-sub">Enterprise accounts saved</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- /page-overview -->
+
+    <!-- ══ LEAKAGE FUNNEL ══════════════════════════════════════════════════ -->
+    <div class="page" id="page-funnel">
+      <div class="content">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Accounts Identified</div><div class="kpi-value" id="f-identified">142</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>8 new this week</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Outreach Initiated</div><div class="kpi-value" id="f-outreach">98</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>69% conversion</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.15a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 15.42z"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">In Negotiation</div><div class="kpi-value" id="f-nego">54</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>+12 vs last month</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Recovered</div><div class="kpi-value" id="f-recovered">31</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>61.7% win rate</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-large">
+            <div class="card-header"><div><div class="card-title">Leakage Funnel by Type</div><div class="card-subtitle">Stage conversion for each leakage category</div></div><div class="card-badge">Oct FY25</div></div>
+            <div style="padding:16px 8px;display:flex;flex-direction:column;gap:10px;flex:1;">
+              <div class="funnel-stage" style="--clr:#4a6cf7;--pct:100%"><div class="funnel-bar" style="background:rgba(74,108,247,0.15);border-left:3px solid #4a6cf7;padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:700;color:#4a6cf7">Pricing Drift — Identified</span><span style="font-size:13px;font-weight:800;color:var(--text-primary)">$296K · 50 accounts</span></div></div>
+              <div style="padding-left:20px"><div style="background:rgba(74,108,247,0.09);border-left:3px solid rgba(74,108,247,0.4);padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:600;color:var(--text-secondary)">→ Outreach Sent</span><span style="font-size:12px;font-weight:700;color:var(--text-primary)">$231K · 36 accounts (72%)</span></div></div>
+              <div style="padding-left:40px;margin-bottom:6px"><div style="background:rgba(74,108,247,0.05);border-left:3px solid rgba(74,108,247,0.2);padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:600;color:var(--text-secondary)">→ Recovered</span><span style="font-size:12px;font-weight:700;color:#05cd99">$166K · 26 accounts (52%)</span></div></div>
+              <div style="background:rgba(5,205,153,0.12);border-left:3px solid #05cd99;padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:700;color:#05cd99">Feature Underuse — Identified</span><span style="font-size:13px;font-weight:800;color:var(--text-primary)">$195K · 43 accounts</span></div>
+              <div style="padding-left:20px"><div style="background:rgba(5,205,153,0.07);border-left:3px solid rgba(5,205,153,0.4);padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:600;color:var(--text-secondary)">→ Outreach Sent</span><span style="font-size:12px;font-weight:700;color:var(--text-primary)">$131K · 29 accounts (67%)</span></div></div>
+              <div style="padding-left:40px;margin-bottom:6px"><div style="background:rgba(5,205,153,0.04);border-left:3px solid rgba(5,205,153,0.2);padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:600;color:var(--text-secondary)">→ Recovered</span><span style="font-size:12px;font-weight:700;color:#05cd99">$58K · 13 accounts (30%)</span></div></div>
+              <div style="background:rgba(245,101,101,0.12);border-left:3px solid #f56565;padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:700;color:#f56565">Billing Errors — Identified</span><span style="font-size:13px;font-weight:800;color:var(--text-primary)">$169K · 28 accounts</span></div>
+              <div style="padding-left:20px"><div style="background:rgba(245,101,101,0.07);border-left:3px solid rgba(245,101,101,0.4);padding:10px 14px;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:600;color:var(--text-secondary)">→ Corrected</span><span style="font-size:12px;font-weight:700;color:#05cd99">$159K · 26 accounts (94%)</span></div></div>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Stage Drop-off Rate</div><div class="card-badge">By Type</div></div>
+              <div style="display:flex;flex-direction:column;gap:10px;padding-top:8px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text-secondary)">Pricing Drift → Recovery</span><span style="font-size:11px;font-weight:700;color:var(--text-primary)">52%</span></div><div class="progress-track"><div class="progress-fill" style="width:52%;background:var(--blue-500);animation-delay:.3s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text-secondary)">Silent Downgrade → Recovery</span><span style="font-size:11px;font-weight:700;color:var(--text-primary)">58%</span></div><div class="progress-track"><div class="progress-fill" style="width:58%;background:var(--green-500);animation-delay:.5s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text-secondary)">Billing Error → Recovery</span><span style="font-size:11px;font-weight:700;color:var(--text-primary)">94%</span></div><div class="progress-track"><div class="progress-fill" style="width:94%;background:var(--orange-500);animation-delay:.7s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text-secondary)">Feature Underuse → Recovery</span><span style="font-size:11px;font-weight:700;color:var(--text-primary)">30%</span></div><div class="progress-track"><div class="progress-fill" style="width:30%;background:var(--red-500);animation-delay:.9s"></div></div></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Avg Time per Stage</div><div class="card-badge">Days</div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--blue-50);border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--blue-600)">Detection → Outreach</span><span style="font-size:15px;font-weight:800;color:var(--blue-600)">3.2d</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff8ee;border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--orange-500)">Outreach → Negotiation</span><span style="font-size:15px;font-weight:800;color:var(--orange-500)">6.8d</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--green-bg);border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--green-500)">Negotiation → Closed</span><span style="font-size:15px;font-weight:800;color:var(--green-500)">4.1d</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--red-bg);border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--red-500)">Avg Total Time</span><span style="font-size:15px;font-weight:800;color:var(--red-500)">14.0d</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-funnel -->
+
+    <!-- ══ COHORT ANALYSIS ═════════════════════════════════════════════════ -->
+    <div class="page" id="page-cohort">
+      <div class="content">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Cohorts Tracked</div><div class="kpi-value">6</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>Aug–Jan</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Avg Leakage Onset</div><div class="kpi-value">4.2 mo</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>After contract start</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Worst Cohort</div><div class="kpi-value">Nov</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>38% leakage rate</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Best Recovery</div><div class="kpi-value">Dec</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>64.0% recovery rate</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-large">
+            <div class="card-header"><div><div class="card-title">Cohort Leakage Heatmap</div><div class="card-subtitle">% of ARR leaked per cohort over time</div></div><div class="card-badge">6 Cohorts</div></div>
+            <div style="overflow-x:auto;padding-top:8px">
+              <table style="width:100%;border-collapse:collapse;font-size:11px">
+                <thead><tr><th style="text-align:left;padding:6px 8px;color:var(--text-secondary);font-weight:600">Cohort</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Mo 1</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Mo 2</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Mo 3</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Mo 4</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Mo 5</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Mo 6</th><th style="padding:6px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Total</th></tr></thead>
+                <tbody id="cohort-tbody">
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">Aug</td>
+      <td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">1.2%</td><td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">3.8%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">6.1%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">9.4%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">11.2%</td><td style="padding:7px 8px;text-align:center;background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700">13.8%</td>
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">13.8%</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">Sep</td>
+      <td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">0.9%</td><td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">4.2%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">7.3%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">10.8%</td><td style="padding:7px 8px;text-align:center;background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700">13.1%</td><td style="padding:7px 8px;text-align:center;background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700">15.6%</td>
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">15.6%</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">Oct</td>
+      <td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">1.4%</td><td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">5.1%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">8.4%</td><td style="padding:7px 8px;text-align:center;background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700">12.3%</td><td style="padding:7px 8px;text-align:center;background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700">14.9%</td><td style="padding:7px 8px;text-align:center;background:rgba(245,101,101,0.18);color:var(--red-500);font-weight:700">18.2%</td>
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">18.2%</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">Nov</td>
+      <td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">2.1%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">6.8%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">11.2%</td><td style="padding:7px 8px;text-align:center;background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700">15.4%</td><td style="padding:7px 8px;text-align:center;background:rgba(245,101,101,0.18);color:var(--red-500);font-weight:700">19.1%</td><td style="padding:7px 8px;text-align:center;background:rgba(245,101,101,0.18);color:var(--red-500);font-weight:700">22.7%</td>
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">22.7%</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">Dec</td>
+      <td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">0.8%</td><td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">3.2%</td><td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">5.9%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">8.6%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">10.4%</td><td style="padding:7px 8px;text-align:center;background:#f9fafc;color:var(--text-muted)">—</td>
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">10.4%</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">Jan</td>
+      <td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">1.1%</td><td style="padding:7px 8px;text-align:center;background:rgba(5,205,153,0.1);color:var(--green-500)">4.4%</td><td style="padding:7px 8px;text-align:center;background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600">7.8%</td><td style="padding:7px 8px;text-align:center;background:#f9fafc;color:var(--text-muted)">—</td><td style="padding:7px 8px;text-align:center;background:#f9fafc;color:var(--text-muted)">—</td><td style="padding:7px 8px;text-align:center;background:#f9fafc;color:var(--text-muted)">—</td>
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">7.8%</td>
+    </tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Leakage by Contract Age</div><div class="card-badge">Months</div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">0–3 months</span><span style="font-size:11px;font-weight:700">2.1%</span></div><div class="progress-track"><div class="progress-fill" style="width:14%;background:var(--green-500);animation-delay:.2s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">4–6 months</span><span style="font-size:11px;font-weight:700">7.4%</span></div><div class="progress-track"><div class="progress-fill" style="width:49%;background:var(--orange-500);animation-delay:.4s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">7–12 months</span><span style="font-size:11px;font-weight:700">12.8%</span></div><div class="progress-track"><div class="progress-fill" style="width:85%;background:var(--red-500);animation-delay:.6s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">12+ months</span><span style="font-size:11px;font-weight:700">15.3%</span></div><div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--red-500);animation-delay:.8s"></div></div></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Cohort Recovery Rate</div><div class="card-badge">%</div></div>
+              <div style="display:flex;flex-direction:column;gap:7px;padding-top:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text-secondary)">Aug cohort</span><div style="display:flex;align-items:center;gap:8px"><div class="progress-track" style="width:80px"><div class="progress-fill" style="width:52%;background:var(--orange-500)"></div></div><span style="font-size:11px;font-weight:700">52%</span></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text-secondary)">Sep cohort</span><div style="display:flex;align-items:center;gap:8px"><div class="progress-track" style="width:80px"><div class="progress-fill" style="width:56%;background:var(--orange-500)"></div></div><span style="font-size:11px;font-weight:700">56%</span></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text-secondary)">Oct cohort</span><div style="display:flex;align-items:center;gap:8px"><div class="progress-track" style="width:80px"><div class="progress-fill" style="width:62%;background:var(--green-500)"></div></div><span style="font-size:11px;font-weight:700">62%</span></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text-secondary)">Nov cohort</span><div style="display:flex;align-items:center;gap:8px"><div class="progress-track" style="width:80px"><div class="progress-fill" style="width:46%;background:var(--orange-500)"></div></div><span style="font-size:11px;font-weight:700">46%</span></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text-secondary)">Dec cohort</span><div style="display:flex;align-items:center;gap:8px"><div class="progress-track" style="width:80px"><div class="progress-fill" style="width:64%;background:var(--green-500)"></div></div><span style="font-size:11px;font-weight:700">64%</span></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text-secondary)">Jan cohort</span><div style="display:flex;align-items:center;gap:8px"><div class="progress-track" style="width:80px"><div class="progress-fill" style="width:38%;background:var(--red-500)"></div></div><span style="font-size:11px;font-weight:700">38%</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-cohort -->
+
+    <!-- ══ CUSTOMER HEALTH ═════════════════════════════════════════════════ -->
+    <div class="page" id="page-health">
+      <div class="content">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Healthy Accounts</div><div class="kpi-value" style="color:var(--green-500)">68%</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>Score ≥ 70</div></div><div class="kpi-icon" style="background:linear-gradient(135deg,#05cd99,#04b587)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">At-Risk Accounts</div><div class="kpi-value" style="color:var(--orange-500)">24%</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>Score 35–69</div></div><div class="kpi-icon" style="background:linear-gradient(135deg,#f6ad55,#e8993f)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Critical Accounts</div><div class="kpi-value" style="color:var(--red-500)">8%</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>Score &lt; 35</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Avg Health Score</div><div class="kpi-value">67.4</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>+3.1 vs last month</div></div><div class="kpi-icon" style="background:linear-gradient(135deg,#4a6cf7,#3956e5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline></svg></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-large">
+            <div class="card-header"><div><div class="card-title">Account Health Scorecards</div><div class="card-subtitle">Adoption score · Login freq · Feature usage · API utilisation</div></div><div class="card-badge">Top 8 Accounts</div></div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:11px">
+                <thead><tr><th style="text-align:left;padding:7px 8px;color:var(--text-secondary);font-weight:600">Account</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Health Score</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Logins/mo</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Feature Use</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">API Use</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Trend</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Status</th></tr></thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">Vantage Analytics</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--green-500)">84</span></td><td style="padding:8px;text-align:center">42</td><td style="padding:8px;text-align:center">91%</td><td style="padding:8px;text-align:center">78%</td><td style="padding:8px;text-align:center;color:var(--green-500)">↑</td><td style="padding:8px;text-align:center"><span class="impact-badge low" style="background:var(--green-bg);color:var(--green-500)">Healthy</span></td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">DataCore Systems</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--green-500)">79</span></td><td style="padding:8px;text-align:center">38</td><td style="padding:8px;text-align:center">84%</td><td style="padding:8px;text-align:center">71%</td><td style="padding:8px;text-align:center;color:var(--green-500)">↑</td><td style="padding:8px;text-align:center"><span class="impact-badge low" style="background:var(--green-bg);color:var(--green-500)">Healthy</span></td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">NovaTech Solutions</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--orange-500)">52</span></td><td style="padding:8px;text-align:center">19</td><td style="padding:8px;text-align:center">58%</td><td style="padding:8px;text-align:center">44%</td><td style="padding:8px;text-align:center;color:var(--red-500)">↓</td><td style="padding:8px;text-align:center"><span class="impact-badge medium">At Risk</span></td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">Meridian Data Co.</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--orange-500)">48</span></td><td style="padding:8px;text-align:center">14</td><td style="padding:8px;text-align:center">51%</td><td style="padding:8px;text-align:center">39%</td><td style="padding:8px;text-align:center;color:var(--red-500)">↓</td><td style="padding:8px;text-align:center"><span class="impact-badge medium">At Risk</span></td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">CloudNest Co.</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--orange-500)">61</span></td><td style="padding:8px;text-align:center">24</td><td style="padding:8px;text-align:center">67%</td><td style="padding:8px;text-align:center">52%</td><td style="padding:8px;text-align:center;color:var(--green-500)">→</td><td style="padding:8px;text-align:center"><span class="impact-badge medium">At Risk</span></td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">BluePeak Systems</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--red-500)">29</span></td><td style="padding:8px;text-align:center">6</td><td style="padding:8px;text-align:center">31%</td><td style="padding:8px;text-align:center">18%</td><td style="padding:8px;text-align:center;color:var(--red-500)">↓</td><td style="padding:8px;text-align:center"><span class="impact-badge high">Critical</span></td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">Apex Cloud Inc.</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--red-500)">33</span></td><td style="padding:8px;text-align:center">9</td><td style="padding:8px;text-align:center">37%</td><td style="padding:8px;text-align:center">22%</td><td style="padding:8px;text-align:center;color:var(--red-500)">↓</td><td style="padding:8px;text-align:center"><span class="impact-badge high">Critical</span></td></tr>
+                  <tr><td style="padding:8px">SkyBridge Corp.</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--green-500)">72</span></td><td style="padding:8px;text-align:center">31</td><td style="padding:8px;text-align:center">77%</td><td style="padding:8px;text-align:center">63%</td><td style="padding:8px;text-align:center;color:var(--green-500)">↑</td><td style="padding:8px;text-align:center"><span class="impact-badge low" style="background:var(--green-bg);color:var(--green-500)">Healthy</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Score Distribution</div><div class="card-badge">All Accounts</div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--green-500);font-weight:600">70–100 Healthy</span><span style="font-size:11px;font-weight:700">68 accounts</span></div><div class="progress-track"><div class="progress-fill" style="width:68%;background:var(--green-500);animation-delay:.2s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--orange-500);font-weight:600">35–69 At Risk</span><span style="font-size:11px;font-weight:700">24 accounts</span></div><div class="progress-track"><div class="progress-fill" style="width:24%;background:var(--orange-500);animation-delay:.4s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--red-500);font-weight:600">0–34 Critical</span><span style="font-size:11px;font-weight:700">8 accounts</span></div><div class="progress-track"><div class="progress-fill" style="width:8%;background:var(--red-500);animation-delay:.6s"></div></div></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Churn Probability</div><div class="card-badge">6-month forecast</div></div>
+              <div style="display:flex;flex-direction:column;gap:7px;padding-top:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--red-bg);border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--red-500)">Score &lt; 35 → Churn risk</span><span style="font-size:15px;font-weight:800;color:var(--red-500)">4.2×</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff8ee;border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--orange-500)">Score 35–69 → Churn risk</span><span style="font-size:15px;font-weight:800;color:var(--orange-500)">1.8×</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--green-bg);border-radius:7px"><span style="font-size:11px;font-weight:600;color:var(--green-500)">Score ≥ 70 → Churn risk</span><span style="font-size:15px;font-weight:800;color:var(--green-500)">0.3×</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-health -->
+
+    <!-- ══ PRICING DRIFT ═══════════════════════════════════════════════════ -->
+    <div class="page" id="page-pricing">
+      <div class="content">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Grandfathered Accounts</div><div class="kpi-value">50</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>35% of leakage</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Avg Price Gap</div><div class="kpi-value">23%</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>Below list price</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Promo Rates Expired</div><div class="kpi-value">18</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>Never updated</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Annual Drift Value</div><div class="kpi-value">$296K</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>Recoverable</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-large">
+            <div class="card-header"><div><div class="card-title">Price Gap Analysis by Account</div><div class="card-subtitle">Contracted MRR vs current list price — sorted by annual leakage</div></div><div class="card-badge">Top Accounts</div></div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:11px">
+                <thead><tr><th style="text-align:left;padding:7px 8px;color:var(--text-secondary);font-weight:600">Account</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Plan</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Contracted MRR</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">List Price</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Gap %</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">Annual Leakage</th><th style="padding:7px 8px;color:var(--text-secondary);font-weight:600;text-align:center">On Promo Since</th></tr></thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">NovaTech Solutions</td><td style="padding:8px;text-align:center">Enterprise</td><td style="padding:8px;text-align:center">$8,200</td><td style="padding:8px;text-align:center">$11,750</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--red-500)">-30%</span></td><td style="padding:8px;text-align:center;font-weight:700;color:var(--red-500)">$42,600</td><td style="padding:8px;text-align:center">Mar 2023</td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">Vantage Analytics</td><td style="padding:8px;text-align:center">Enterprise</td><td style="padding:8px;text-align:center">$14,100</td><td style="padding:8px;text-align:center">$17,500</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--red-500)">-19%</span></td><td style="padding:8px;text-align:center;font-weight:700;color:var(--red-500)">$40,800</td><td style="padding:8px;text-align:center">Jan 2023</td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">DataCore Systems</td><td style="padding:8px;text-align:center">Pro</td><td style="padding:8px;text-align:center">$3,400</td><td style="padding:8px;text-align:center">$4,800</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--orange-500)">-29%</span></td><td style="padding:8px;text-align:center;font-weight:700;color:var(--orange-500)">$16,800</td><td style="padding:8px;text-align:center">Jul 2023</td></tr>
+                  <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px">BluePeak Systems</td><td style="padding:8px;text-align:center">Pro</td><td style="padding:8px;text-align:center">$2,800</td><td style="padding:8px;text-align:center">$3,900</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--orange-500)">-28%</span></td><td style="padding:8px;text-align:center;font-weight:700;color:var(--orange-500)">$13,200</td><td style="padding:8px;text-align:center">Oct 2023</td></tr>
+                  <tr><td style="padding:8px">ClearPath Inc.</td><td style="padding:8px;text-align:center">Growth</td><td style="padding:8px;text-align:center">$1,650</td><td style="padding:8px;text-align:center">$2,100</td><td style="padding:8px;text-align:center"><span style="font-weight:800;color:var(--orange-500)">-21%</span></td><td style="padding:8px;text-align:center;font-weight:700;color:var(--orange-500)">$5,400</td><td style="padding:8px;text-align:center">Apr 2024</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Drift by Plan Tier</div><div class="card-badge">Breakdown</div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Enterprise (&gt;$10K MRR)</span><span style="font-size:11px;font-weight:700;color:var(--red-500)">$168K</span></div><div class="progress-track"><div class="progress-fill" style="width:57%;background:var(--red-500);animation-delay:.2s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Pro ($2K–$10K MRR)</span><span style="font-size:11px;font-weight:700;color:var(--orange-500)">$94K</span></div><div class="progress-track"><div class="progress-fill" style="width:32%;background:var(--orange-500);animation-delay:.4s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Growth (&lt;$2K MRR)</span><span style="font-size:11px;font-weight:700;color:var(--blue-500)">$34K</span></div><div class="progress-track"><div class="progress-fill" style="width:11%;background:var(--blue-500);animation-delay:.6s"></div></div></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Recommended Actions</div><div class="card-badge">Prioritised</div></div>
+              <div style="display:flex;flex-direction:column;gap:7px;padding-top:4px">
+                <div style="padding:9px 10px;background:var(--red-bg);border-left:3px solid var(--red-500);border-radius:6px"><div style="font-size:11px;font-weight:700;color:var(--red-500)">Immediate (&gt;30% gap)</div><div style="font-size:10.5px;color:var(--text-secondary);margin-top:2px">Schedule renewal call — 8 accounts · $83K</div></div>
+                <div style="padding:9px 10px;background:#fff8ee;border-left:3px solid var(--orange-500);border-radius:6px"><div style="font-size:11px;font-weight:700;color:var(--orange-500)">Next 60 days (15–30% gap)</div><div style="font-size:10.5px;color:var(--text-secondary);margin-top:2px">Proactive outreach — 22 accounts · $142K</div></div>
+                <div style="padding:9px 10px;background:var(--blue-50);border-left:3px solid var(--blue-500);border-radius:6px"><div style="font-size:11px;font-weight:700;color:var(--blue-600)">Quarterly review (10–15% gap)</div><div style="font-size:10.5px;color:var(--text-secondary);margin-top:2px">Include in next QBR — 20 accounts · $71K</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-pricing -->
+
+    <!-- ══ RECOVERY PLAYBOOK ═══════════════════════════════════════════════ -->
+    <div class="page" id="page-playbook">
+      <div class="content">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Playbooks Active</div><div class="kpi-value">4</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>All types covered</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Best Win Rate</div><div class="kpi-value">94%</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>Billing errors</div></div><div class="kpi-icon" style="background:linear-gradient(135deg,#05cd99,#04b587)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Avg Outreach to Close</div><div class="kpi-value">14d</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>Down from 23d</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Revenue at Playbook</div><div class="kpi-value">$523K</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>Recovered this period</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-large">
+            <div class="card-header"><div><div class="card-title">Recovery Playbooks by Leakage Type</div><div class="card-subtitle">Step-by-step action plan · win rate · avg recovery value</div></div></div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px;overflow-y:auto">
+              <div style="border:1px solid var(--card-border);border-radius:10px;overflow:hidden">
+                <div style="background:rgba(74,108,247,0.08);padding:10px 14px;display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;color:var(--blue-600);font-size:12px">💰 Pricing Drift Playbook</span><span style="font-size:11px;color:var(--blue-600);font-weight:600">Win rate: 72% · Avg recovery: $5,920/account</span></div>
+                <div style="padding:10px 14px;font-size:11px;color:var(--text-secondary);line-height:1.7">
+                  <b style="color:var(--text-primary)">Step 1 (Day 0):</b> Auto-flag account — contracted MRR &gt;10% below list price<br>
+                  <b style="color:var(--text-primary)">Step 2 (Day 3):</b> CSM receives alert with price gap report &amp; renewal date<br>
+                  <b style="color:var(--text-primary)">Step 3 (Day 7):</b> CSM initiates value-demonstration call, prepares upgrade proposal<br>
+                  <b style="color:var(--text-primary)">Step 4 (Day 14):</b> Send formal pricing adjustment with 60-day notice<br>
+                  <b style="color:var(--text-primary)">Step 5 (Day 60):</b> New rate activates at next billing cycle
+                </div>
+              </div>
+              <div style="border:1px solid var(--card-border);border-radius:10px;overflow:hidden">
+                <div style="background:rgba(5,205,153,0.08);padding:10px 14px;display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;color:#05cd99;font-size:12px">📉 Silent Downgrade Playbook</span><span style="font-size:11px;color:#05cd99;font-weight:600">Win rate: 58% · Avg recovery: $4,100/account</span></div>
+                <div style="padding:10px 14px;font-size:11px;color:var(--text-secondary);line-height:1.7">
+                  <b style="color:var(--text-primary)">Step 1 (Day 0):</b> Downgrade event triggers immediate CRM workflow<br>
+                  <b style="color:var(--text-primary)">Step 2 (Day 1):</b> CSM outreach within 24 hours — no-pressure check-in<br>
+                  <b style="color:var(--text-primary)">Step 3 (Day 5):</b> Root cause call — identify budget, satisfaction, or usage issues<br>
+                  <b style="color:var(--text-primary)">Step 4 (Day 10):</b> Tailored re-engagement: training, executive sponsor, or discount bridge
+                </div>
+              </div>
+              <div style="border:1px solid var(--card-border);border-radius:10px;overflow:hidden">
+                <div style="background:rgba(245,101,101,0.08);padding:10px 14px;display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;color:var(--red-500);font-size:12px">🧾 Billing Error Playbook</span><span style="font-size:11px;color:var(--red-500);font-weight:600">Win rate: 94% · Avg recovery: $6,500/account</span></div>
+                <div style="padding:10px 14px;font-size:11px;color:var(--text-secondary);line-height:1.7">
+                  <b style="color:var(--text-primary)">Step 1 (Day 0):</b> Monthly reconciliation script flags invoice vs entitlement mismatch<br>
+                  <b style="color:var(--text-primary)">Step 2 (Day 1):</b> Finance team verifies — issue corrected in billing system<br>
+                  <b style="color:var(--text-primary)">Step 3 (Day 2):</b> Customer notified with explanation + goodwill credit if &gt;$500 error<br>
+                  <b style="color:var(--text-primary)">Step 4 (Day 3):</b> Corrected invoice issued — new MRR takes effect immediately
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Playbook Performance</div><div class="card-badge">Win Rate</div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Billing Error</span><span style="font-size:11px;font-weight:700;color:var(--green-500)">94%</span></div><div class="progress-track"><div class="progress-fill" style="width:94%;background:var(--green-500);animation-delay:.2s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Pricing Drift</span><span style="font-size:11px;font-weight:700;color:var(--green-500)">72%</span></div><div class="progress-track"><div class="progress-fill" style="width:72%;background:var(--green-500);animation-delay:.4s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Silent Downgrade</span><span style="font-size:11px;font-weight:700;color:var(--orange-500)">58%</span></div><div class="progress-track"><div class="progress-fill" style="width:58%;background:var(--orange-500);animation-delay:.6s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Feature Underuse</span><span style="font-size:11px;font-weight:700;color:var(--red-500)">45%</span></div><div class="progress-track"><div class="progress-fill" style="width:45%;background:var(--red-500);animation-delay:.8s"></div></div></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Next Actions Queue</div><div class="card-badge">Today</div></div>
+              <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
+                <div style="padding:8px 10px;background:var(--red-bg);border-radius:7px;display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--red-500)">Escalated — call today</span><span style="font-size:11px;font-weight:700;color:var(--red-500)">3 accounts</span></div>
+                <div style="padding:8px 10px;background:#fff8ee;border-radius:7px;display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--orange-500)">Outreach due this week</span><span style="font-size:11px;font-weight:700;color:var(--orange-500)">11 accounts</span></div>
+                <div style="padding:8px 10px;background:var(--blue-50);border-radius:7px;display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--blue-600)">QBR prep needed</span><span style="font-size:11px;font-weight:700;color:var(--blue-600)">7 accounts</span></div>
+                <div style="padding:8px 10px;background:var(--green-bg);border-radius:7px;display:flex;justify-content:space-between"><span style="font-size:11px;font-weight:600;color:var(--green-500)">Closed this week</span><span style="font-size:11px;font-weight:700;color:var(--green-500)">5 accounts</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-playbook -->
+
+    <!-- ══ ROOT CAUSE EXPLORER ═════════════════════════════════════════════ -->
+    <div class="page" id="page-root">
+      <div class="content">
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Root Causes Identified</div><div class="kpi-value">7</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>Across all types</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Top Cause</div><div class="kpi-value" style="font-size:14px">Stale Contracts</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>43% of all leakage</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Preventable Leakage</div><div class="kpi-value">76%</div><div class="kpi-delta up"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 3l4 4H2l4-4z"></path></svg>With process changes</div></div><div class="kpi-icon" style="background:linear-gradient(135deg,#05cd99,#04b587)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+          <div class="kpi-card"><div class="kpi-info"><div class="kpi-label">Process Gaps Found</div><div class="kpi-value">4</div><div class="kpi-delta down"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 9L2 5h8L6 9z"></path></svg>In CS workflow</div></div><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div></div>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-large">
+            <div class="card-header"><div><div class="card-title">Root Cause Breakdown</div><div class="card-subtitle">Primary driver behind each leakage category — impact &amp; fix</div></div></div>
+            <div style="display:flex;flex-direction:column;gap:10px;padding-top:8px;overflow-y:auto">
+              <div style="border:1px solid var(--card-border);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--text-primary)">Stale promotional contracts never renegotiated</span><span class="impact-badge high">$296K</span></div><div style="font-size:11px;color:var(--text-secondary);line-height:1.6">23% of enterprise accounts are still on rates from 2+ years ago. No automated process existed to flag contracts for renewal review when prices changed. <b style="color:var(--blue-600)">Fix: automated 60-day renewal alert when contracted rate drifts &gt;10% below list.</b></div></div>
+              <div style="border:1px solid var(--card-border);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--text-primary)">No CSM alert on downgrade events</span><span class="impact-badge high">$186K</span></div><div style="font-size:11px;color:var(--text-secondary);line-height:1.6">67% of silent downgrades happened at renewal with zero CSM contact in the prior 90 days. Downgrades were logged in billing but never surfaced to the success team. <b style="color:var(--blue-600)">Fix: CRM workflow triggers CSM task within 24h of any plan reduction event.</b></div></div>
+              <div style="border:1px solid var(--card-border);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--text-primary)">Add-ons provisioned but never billed</span><span class="impact-badge medium">$169K</span></div><div style="font-size:11px;color:var(--text-secondary);line-height:1.6">43% of billing errors were services switched on in the product backend with no corresponding invoice update. Provisioning and billing systems were not integrated. <b style="color:var(--blue-600)">Fix: monthly reconciliation script matching provisioned services to active invoice line items.</b></div></div>
+              <div style="border:1px solid var(--card-border);border-radius:9px;padding:12px 14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--text-primary)">No proactive engagement for low-adoption accounts</span><span class="impact-badge medium">$195K</span></div><div style="font-size:11px;color:var(--text-secondary);line-height:1.6">Accounts with adoption scores below 35 were invisible until they requested a downgrade or cancelled. No health scoring existed before this project. <b style="color:var(--blue-600)">Fix: weekly adoption scorecards in CRM; intervention triggered below score of 35.</b></div></div>
+            </div>
+          </div>
+          <div class="right-stack">
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Cause → Impact</div><div class="card-badge">% of leakage</div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:6px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Stale contracts</span><span style="font-size:11px;font-weight:700;color:var(--red-500)">43%</span></div><div class="progress-track"><div class="progress-fill" style="width:43%;background:var(--red-500);animation-delay:.1s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">No downgrade alerting</span><span style="font-size:11px;font-weight:700;color:var(--orange-500)">22%</span></div><div class="progress-track"><div class="progress-fill" style="width:22%;background:var(--orange-500);animation-delay:.3s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">Billing/provisioning gap</span><span style="font-size:11px;font-weight:700;color:var(--orange-500)">20%</span></div><div class="progress-track"><div class="progress-fill" style="width:20%;background:var(--orange-500);animation-delay:.5s"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:var(--text-secondary)">No adoption monitoring</span><span style="font-size:11px;font-weight:700;color:var(--blue-500)">15%</span></div><div class="progress-track"><div class="progress-fill" style="width:15%;background:var(--blue-500);animation-delay:.7s"></div></div></div>
+              </div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-header"><div class="card-title">Fixes Implemented</div><div class="card-badge">Status</div></div>
+              <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
+                <div style="padding:8px 10px;background:var(--green-bg);border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:600;color:var(--green-500)">Pricing drift alerts</span><span style="font-size:10px;background:var(--green-500);color:white;padding:2px 8px;border-radius:10px;font-weight:700">Live</span></div>
+                <div style="padding:8px 10px;background:var(--green-bg);border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:600;color:var(--green-500)">Downgrade workflow</span><span style="font-size:10px;background:var(--green-500);color:white;padding:2px 8px;border-radius:10px;font-weight:700">Live</span></div>
+                <div style="padding:8px 10px;background:var(--green-bg);border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:600;color:var(--green-500)">Billing reconciliation</span><span style="font-size:10px;background:var(--green-500);color:white;padding:2px 8px;border-radius:10px;font-weight:700">Live</span></div>
+                <div style="padding:8px 10px;background:#fff8ee;border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;font-weight:600;color:var(--orange-500)">Adoption scorecards</span><span style="font-size:10px;background:var(--orange-500);color:white;padding:2px 8px;border-radius:10px;font-weight:700">In Progress</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /page-root -->
+
+  </main>
+</div>
+<script>
+// ── PAGE NAVIGATION ──────────────────────────────────────────────────────────
+const PAGE_MAP = {
+  'Overview':          'page-overview',
+  'Leakage Funnel':    'page-funnel',
+  'Cohort Analysis':   'page-cohort',
+  'Customer Health':   'page-health',
+  'Pricing Drift':     'page-pricing',
+  'Recovery Playbook': 'page-playbook',
+  'Root Cause Explorer':'page-root'
+};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const id = PAGE_MAP[name];
+  if (id) document.getElementById(id).classList.add('active');
+  // re-trigger progress-fill animations
+  document.querySelectorAll('#' + id + ' .progress-fill').forEach(f => {
+    f.style.animation = 'none';
+    requestAnimationFrame(() => { f.style.animation = ''; });
+  });
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+    item.classList.add('active');
+    const pageId = item.dataset.page;
+    if (!pageId) return;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(pageId);
+    if (target) {
+      target.classList.add('active');
+      target.querySelectorAll('.progress-fill').forEach(f => {
+        f.style.animation = 'none';
+        requestAnimationFrame(() => { f.style.animation = ''; });
+      });
+    }
+  });
+});
+
+// ── COHORT HEATMAP ───────────────────────────────────────────────────────────
+(function buildCohortTable() {
+  const cohorts = [
+    { name:'Aug', vals:[1.2, 3.8, 6.1, 9.4, 11.2, 13.8], total:13.8 },
+    { name:'Sep', vals:[0.9, 4.2, 7.3, 10.8, 13.1, 15.6], total:15.6 },
+    { name:'Oct', vals:[1.4, 5.1, 8.4, 12.3, 14.9, 18.2], total:18.2 },
+    { name:'Nov', vals:[2.1, 6.8, 11.2, 15.4, 19.1, 22.7], total:22.7 },
+    { name:'Dec', vals:[0.8, 3.2, 5.9, 8.6, 10.4, null],   total:10.4 },
+    { name:'Jan', vals:[1.1, 4.4, 7.8, null, null, null],  total:7.8 },
+  ];
+  function color(v) {
+    if (v === null) return 'background:#f9fafc;color:var(--text-muted)';
+    if (v > 18) return 'background:rgba(245,101,101,0.18);color:var(--red-500);font-weight:700';
+    if (v > 12) return 'background:rgba(246,173,85,0.18);color:var(--orange-500);font-weight:700';
+    if (v > 6)  return 'background:rgba(74,108,247,0.1);color:var(--blue-600);font-weight:600';
+    return 'background:rgba(5,205,153,0.1);color:var(--green-500)';
+  }
+  const tbody = document.getElementById('cohort-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = cohorts.map(c => `
+    <tr style="border-bottom:1px solid var(--card-border)">
+      <td style="padding:7px 8px;font-weight:600">${c.name}</td>
+      ${c.vals.map(v => `<td style="padding:7px 8px;text-align:center;${color(v)}">${v !== null ? v + '%' : '—'}</td>`).join('')}
+      <td style="padding:7px 8px;text-align:center;font-weight:800;color:var(--text-primary)">${c.total}%</td>
+    </tr>`).join('');
+})();
+
+// ── DATA PER MONTH ──────────────────────────────────────────────────────────
+const MONTHS = ['Aug','Sep','Oct','Nov','Dec','Jan'];
+const DATA = {
+  Aug: {
+    kpi:      { leakage:612400, recovered:178300, atRisk:98,  rate:29.1 },
+    summary:  { impact:0.93, recovered:58,  days:23, churn:18 },
+    bars:     { leakage:[55,68,82,73,90,65], recovery:[28,40,55,58,64,52] }, // relative % heights for context — Aug is first month so single bar shown
+    barActive: 0,
+    donut:    { pricingDrift:32, silentDown:20, billing:22, featureUse:26 },
+    pipeline: { queued:210000, outreach:148000, nego:95000, recovered:178300 },
+    table: [
+      { name:'ClearPath Inc.',    arr:'$142K', type:'Pricing Drift',    dot:'critical', amt:'$31,200', amtColor:'red',    status:'Escalated', impact:'high' },
+      { name:'SkyBridge Corp.',   arr:'$88K',  type:'Billing Error',    dot:'critical', amt:'$19,500', amtColor:'red',    status:'Queued',    impact:'medium' },
+      { name:'Vertex Solutions',  arr:'$176K', type:'Feature Underuse', dot:'warning',  amt:'$14,100', amtColor:'orange', status:'Monitoring',impact:'low' },
+      { name:'Orion Data Labs',   arr:'$63K',  type:'Silent Downgrade', dot:'warning',  amt:'$11,800', amtColor:'orange', status:'Outreach',  impact:'medium' },
+      { name:'NexGen Analytics',  arr:'$54K',  type:'Pricing Drift',    dot:'warning',  amt:'$9,400',  amtColor:'orange', status:'In Review', impact:'low' },
+    ]
+  },
+  Sep: {
+    kpi:      { leakage:698000, recovered:251000, atRisk:112, rate:36.0 },
+    summary:  { impact:1.04, recovered:67,  days:21, churn:22 },
+    barActive: 1,
+    donut:    { pricingDrift:33, silentDown:21, billing:21, featureUse:25 },
+    pipeline: { queued:248000, outreach:171000, nego:112000, recovered:251000 },
+    table: [
+      { name:'DataCore Systems',  arr:'$158K', type:'Pricing Drift',    dot:'critical', amt:'$36,800', amtColor:'red',    status:'Escalated', impact:'high' },
+      { name:'CloudNest Co.',     arr:'$102K', type:'Silent Downgrade', dot:'warning',  amt:'$24,300', amtColor:'orange', status:'In Review', impact:'high' },
+      { name:'Apex Cloud Inc.',   arr:'$97K',  type:'Billing Error',    dot:'critical', amt:'$18,200', amtColor:'red',    status:'Queued',    impact:'medium' },
+      { name:'BluePeak Systems',  arr:'$78K',  type:'Pricing Drift',    dot:'warning',  amt:'$13,600', amtColor:'orange', status:'Outreach',  impact:'medium' },
+      { name:'Vantage Analytics', arr:'$210K', type:'Feature Underuse', dot:'healthy',  amt:'$10,900', amtColor:'orange', status:'Monitoring',impact:'low' },
+    ]
+  },
+  Oct: {
+    kpi:      { leakage:847500, recovered:523200, atRisk:142, rate:61.7 },
+    summary:  { impact:1.37, recovered:89,  days:14, churn:31 },
+    barActive: 2,
+    donut:    { pricingDrift:35, silentDown:22, billing:20, featureUse:23 },
+    pipeline: { queued:312000, outreach:218000, nego:147000, recovered:523200 },
+    table: [
+      { name:'NovaTech Solutions',arr:'$186K', type:'Pricing Drift',    dot:'critical', amt:'$42,300', amtColor:'red',    status:'Escalated', impact:'high' },
+      { name:'Meridian Data Co.', arr:'$124K', type:'Silent Downgrade', dot:'warning',  amt:'$28,750', amtColor:'orange', status:'In Review', impact:'high' },
+      { name:'Apex Cloud Inc.',   arr:'$97K',  type:'Billing Error',    dot:'critical', amt:'$18,200', amtColor:'red',    status:'Queued',    impact:'medium' },
+      { name:'Vantage Analytics', arr:'$210K', type:'Feature Underuse', dot:'healthy',  amt:'$15,600', amtColor:'orange', status:'Monitoring',impact:'low' },
+      { name:'BluePeak Systems',  arr:'$78K',  type:'Pricing Drift',    dot:'warning',  amt:'$12,400', amtColor:'orange', status:'Outreach',  impact:'medium' },
+    ]
+  },
+  Nov: {
+    kpi:      { leakage:763000, recovered:442000, atRisk:129, rate:57.9 },
+    summary:  { impact:1.21, recovered:79,  days:16, churn:27 },
+    barActive: 3,
+    donut:    { pricingDrift:34, silentDown:23, billing:19, featureUse:24 },
+    pipeline: { queued:280000, outreach:196000, nego:128000, recovered:442000 },
+    table: [
+      { name:'Meridian Data Co.', arr:'$124K', type:'Pricing Drift',    dot:'critical', amt:'$38,100', amtColor:'red',    status:'Escalated', impact:'high' },
+      { name:'SkyBridge Corp.',   arr:'$88K',  type:'Silent Downgrade', dot:'warning',  amt:'$22,400', amtColor:'orange', status:'In Review', impact:'high' },
+      { name:'ClearPath Inc.',    arr:'$142K', type:'Billing Error',    dot:'critical', amt:'$16,900', amtColor:'red',    status:'Queued',    impact:'medium' },
+      { name:'NexGen Analytics',  arr:'$54K',  type:'Feature Underuse', dot:'healthy',  amt:'$13,200', amtColor:'orange', status:'Monitoring',impact:'low' },
+      { name:'Orion Data Labs',   arr:'$63K',  type:'Pricing Drift',    dot:'warning',  amt:'$10,700', amtColor:'orange', status:'Outreach',  impact:'medium' },
+    ]
+  },
+  Dec: {
+    kpi:      { leakage:921000, recovered:589000, atRisk:158, rate:64.0 },
+    summary:  { impact:1.52, recovered:101, days:13, churn:36 },
+    barActive: 4,
+    donut:    { pricingDrift:36, silentDown:22, billing:19, featureUse:23 },
+    pipeline: { queued:348000, outreach:244000, nego:163000, recovered:589000 },
+    table: [
+      { name:'NovaTech Solutions',arr:'$186K', type:'Pricing Drift',    dot:'critical', amt:'$48,700', amtColor:'red',    status:'Escalated', impact:'high' },
+      { name:'Vantage Analytics', arr:'$210K', type:'Silent Downgrade', dot:'warning',  amt:'$33,200', amtColor:'orange', status:'In Review', impact:'high' },
+      { name:'DataCore Systems',  arr:'$158K', type:'Billing Error',    dot:'critical', amt:'$21,400', amtColor:'red',    status:'Queued',    impact:'medium' },
+      { name:'BluePeak Systems',  arr:'$78K',  type:'Feature Underuse', dot:'healthy',  amt:'$17,800', amtColor:'orange', status:'Monitoring',impact:'low' },
+      { name:'CloudNest Co.',     arr:'$102K', type:'Pricing Drift',    dot:'warning',  amt:'$14,100', amtColor:'orange', status:'Outreach',  impact:'medium' },
+    ]
+  },
+  Jan: {
+    kpi:      { leakage:714000, recovered:371000, atRisk:121, rate:52.0 },
+    summary:  { impact:1.08, recovered:72,  days:17, churn:24 },
+    barActive: 5,
+    donut:    { pricingDrift:33, silentDown:24, billing:21, featureUse:22 },
+    pipeline: { queued:264000, outreach:182000, nego:118000, recovered:371000 },
+    table: [
+      { name:'Apex Cloud Inc.',   arr:'$97K',  type:'Pricing Drift',    dot:'critical', amt:'$34,600', amtColor:'red',    status:'Escalated', impact:'high' },
+      { name:'ClearPath Inc.',    arr:'$142K', type:'Silent Downgrade', dot:'warning',  amt:'$25,100', amtColor:'orange', status:'In Review', impact:'high' },
+      { name:'NovaTech Solutions',arr:'$186K', type:'Billing Error',    dot:'critical', amt:'$16,400', amtColor:'red',    status:'Queued',    impact:'medium' },
+      { name:'Orion Data Labs',   arr:'$63K',  type:'Feature Underuse', dot:'healthy',  amt:'$12,900', amtColor:'orange', status:'Monitoring',impact:'low' },
+      { name:'SkyBridge Corp.',   arr:'$88K',  type:'Pricing Drift',    dot:'warning',  amt:'$9,800',  amtColor:'orange', status:'Outreach',  impact:'medium' },
+    ]
+  }
+};
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+function fmt(n, format, prefix, suffix) {
+  prefix = prefix || ''; suffix = suffix || '';
+  if (format === 'comma')   return prefix + Math.round(n).toLocaleString('en-US') + suffix;
+  if (format === 'decimal') { const d = n % 1 !== 0 ? (n < 10 ? 2 : 1) : 0; return prefix + n.toFixed(d) + suffix; }
+  return prefix + Math.round(n) + suffix;
+}
+
+function animateVal(el, toVal) {
+  const prefix = el.dataset.prefix || '', suffix = el.dataset.suffix || '', format = el.dataset.format || 'plain';
+  const from = parseFloat(el.dataset.current || 0), duration = 600, start = performance.now();
+  function ease(t) { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
+  function tick(now) {
+    const p = Math.min((now - start) / duration, 1), c = from + (toVal - from) * ease(p);
+    el.textContent = fmt(c, format, prefix, suffix);
+    if (p < 1) requestAnimationFrame(tick);
+    else el.dataset.current = toVal;
+  }
+  requestAnimationFrame(tick);
+}
+
+// ── DONUT ────────────────────────────────────────────────────────────────────
+const CIRCUMFERENCE = 2 * Math.PI * 48; // r=48
+function updateDonut(d) {
+  const pcts = [d.pricingDrift, d.silentDown, d.billing, d.featureUse];
+  const circles = document.querySelectorAll('.donut-container svg circle:not(:first-child)');
+  let offset = 0;
+  circles.forEach((c, i) => {
+    const len = (pcts[i] / 100) * CIRCUMFERENCE;
+    c.setAttribute('stroke-dasharray', len.toFixed(1) + ' ' + (CIRCUMFERENCE - len).toFixed(1));
+    c.setAttribute('stroke-dashoffset', (-offset).toFixed(1));
+    offset += len;
+  });
+  // update legend percentages
+  const legendVals = document.querySelectorAll('.legend-val');
+  legendVals.forEach((el, i) => { el.textContent = pcts[i] + '%'; });
+}
+
+// ── BAR CHART ────────────────────────────────────────────────────────────────
+// Bar heights (%) for all 6 months, two series
+const BAR_LEAKAGE  = [55, 68, 82, 73, 90, 65];
+const BAR_RECOVERY = [28, 40, 55, 58, 64, 52];
+// Override with per-month scaling based on actual KPI ratios
+const MAX_LEAKAGE = 921000;
+
+function updateBars(activeMonth) {
+  const activeIdx = MONTHS.indexOf(activeMonth);
+  const barGroups = document.querySelectorAll('.bar-group');
+  barGroups.forEach((group, i) => {
+    const primaryBar  = group.querySelector('.bar.primary');
+    const secondaryBar = group.querySelector('.bar.secondary');
+    const lPct = Math.round((DATA[MONTHS[i]].kpi.leakage  / MAX_LEAKAGE) * 95);
+    const rPct = Math.round((DATA[MONTHS[i]].kpi.recovered / MAX_LEAKAGE) * 95);
+    // highlight active month, dim others slightly
+    const dimmed = i !== activeIdx;
+    primaryBar.style.height   = lPct + '%';
+    secondaryBar.style.height = rPct + '%';
+    primaryBar.style.opacity   = dimmed ? '0.45' : '1';
+    secondaryBar.style.opacity = dimmed ? '0.45' : '1';
+    // re-trigger animation
+    primaryBar.style.animation   = 'none';
+    secondaryBar.style.animation = 'none';
+    requestAnimationFrame(() => {
+      primaryBar.style.animation   = '';
+      secondaryBar.style.animation = '';
+    });
+  });
+}
+
+// ── PIPELINE PROGRESS BARS ───────────────────────────────────────────────────
+function updatePipeline(p) {
+  const max = p.queued;
+  const vals  = [p.queued, p.outreach, p.nego, p.recovered];
+  const fills  = document.querySelectorAll('.progress-fill');
+  const labels = document.querySelectorAll('.progress-val');
+  fills.forEach((f, i)  => { f.style.width = Math.round((vals[i] / max) * 100) + '%'; });
+  labels.forEach((l, i) => { l.textContent = '$' + Math.round(vals[i]/1000) + 'K'; });
+}
+
+// ── TABLE ────────────────────────────────────────────────────────────────────
+function updateTable(rows) {
+  const tbody = document.querySelector('tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td>${r.arr}</td>
+      <td><span class="status-dot ${r.dot}"></span>${r.type}</td>
+      <td style="font-weight:700;color:var(--${r.amtColor}-500)">${r.amt}</td>
+      <td>${r.status}</td>
+      <td><span class="impact-badge ${r.impact}">${r.impact === 'high' ? 'High' : r.impact === 'medium' ? 'Med' : 'Low'}</span></td>
+    </tr>`).join('');
+}
+
+// ── GRID LABELS ──────────────────────────────────────────────────────────────
+function updateGridlines(month) {
+  const maxLeakage = DATA[month].kpi.leakage;
+  const labels = document.querySelectorAll('.gridline-label');
+  const steps  = [1.0, 0.75, 0.5, 0.25, 0];
+  labels.forEach((el, i) => {
+    const val = maxLeakage * steps[i];
+    el.textContent = val === 0 ? '$0' : '$' + Math.round(val / 1000) + 'K';
+  });
+}
+
+// ── MAIN UPDATE ──────────────────────────────────────────────────────────────
+function updateDashboard(month) {
+  const d = DATA[month];
+
+  // KPI cards
+  const kpiEls = document.querySelectorAll('.kpi-value');
+  const kpiVals = [d.kpi.leakage, d.kpi.recovered, d.kpi.atRisk, d.kpi.rate];
+  kpiEls.forEach((el, i) => animateVal(el, kpiVals[i]));
+
+  // Summary boxes
+  const sEls = document.querySelectorAll('.s-value');
+  const sVals = [d.summary.impact, d.summary.recovered, d.summary.days, d.summary.churn];
+  sEls.forEach((el, i) => animateVal(el, sVals[i]));
+
+  // Donut center
+  const donutCenter = document.querySelector('.donut-center .val');
+  animateVal(donutCenter, d.kpi.leakage / 1000);
+
+  updateDonut(d.donut);
+  updateBars(month);
+  updatePipeline(d.pipeline);
+  updateTable(d.table);
+  updateGridlines(month);
+
+  // Update period badge
+  document.querySelector('.card-badge') && (() => {
+    const badges = document.querySelectorAll('.card-badge');
+    if (badges[1]) badges[1].textContent = month + ' FY25';
+  })();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+// Seed data-current on all animated elements so first click interpolates correctly
+function seedCurrent(el) { el.dataset.current = parseFloat(el.dataset.target) || 0; }
+
+// Initial count-up animation on load
+function animateCountUp(el) {
+  const target = parseFloat(el.dataset.target);
+  const prefix = el.dataset.prefix || '', suffix = el.dataset.suffix || '', format = el.dataset.format || 'plain';
+  const duration = 1800, startTime = performance.now();
+  function ease(t) { return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+  function update(now) {
+    const p = Math.min((now - startTime) / duration, 1), c = target * ease(p);
+    el.textContent = fmt(c, format, prefix, suffix);
+    if (p < 1) requestAnimationFrame(update);
+    else el.dataset.current = target;
+  }
+  setTimeout(() => requestAnimationFrame(update), 600);
+}
+document.querySelectorAll('[data-target]').forEach(animateCountUp);
+
+// Set initial bar heights from Oct data (default active month)
+updateBars('Oct');
+updateGridlines('Oct');
+
+// Month pills
+document.querySelectorAll('.month-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.month-pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    updateDashboard(p.textContent.trim());
+  });
+});
+
+// Filter chips — visual toggle only (real filter would need raw account-level data)
+document.querySelectorAll('.filter-chip').forEach(c => {
+  c.addEventListener('click', () => { c.classList.toggle('af'); });
+});
+// ── DOWNLOAD BUTTON ──────────────────────────────────────────────────────────
+document.getElementById('download-btn').addEventListener('click', () => {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob(['<!DOCTYPE html>' + html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'revenue-leakage-dashboard.html';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+
+
+</body></html>
