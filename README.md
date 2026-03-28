@@ -38,17 +38,17 @@
 
 Every SaaS company obsesses over **churn** — the moment a customer cancels. But cancellations are only the most visible form of revenue loss.
 
-**Silent revenue leakage** is different. It happens when customers stay active and never cancel — but are quietly paying less than they should. They do not appear on any churn report. No alert fires. The money just disappears.
+**Silent revenue leakage** is different. It happens when customers stay active and never cancel,  but are quietly paying less than they should. They do not appear on any churn report. No alert fires. The money just disappears.
 
 Industry research suggests SaaS businesses lose **5–15% of ARR annually** to silent leakage. Fewer than 12% actively monitor for it.
 
-This project identifies, classifies, and quantifies that leakage — and builds a framework to recover it.
+This project identifies, classifies, and quantifies that leakage and builds a framework to recover it.
 
 ---
 
 ## 2. Why This Project
 
-While studying SaaS subscription analytics, I kept noticing a gap: most dashboards and tutorials focus on churn rate. But if a customer downgrades their plan, sits on a two-year-old promotional price, or is being billed incorrectly for features — none of that shows up in a churn metric.
+While studying SaaS subscription analytics, I kept noticing a gap: most dashboards and tutorials focus on churn rate. But if a customer downgrades their plan, sits on a two-year-old promotional price, or is being billed incorrectly for features, none of that shows up in a churn metric.
 
 I wanted to answer a specific question: **how much revenue is a SaaS business losing from customers who have not churned?**
 
@@ -99,7 +99,7 @@ All data cleaning was done in **Excel and Power Query** before loading into Powe
 
 ## 5. How I Transformed It into a SaaS Context
 
-The raw dataset is from a telecom company. I re-mapped it to simulate a B2B SaaS business — all done using **Power Query custom columns and DAX measures in Power BI**.
+The raw dataset is from a telecom company. I re-mapped it to simulate a B2B SaaS business,  all done using **Power Query custom columns and DAX measures in Power BI**.
 
 ### Field Mapping
 
@@ -140,7 +140,7 @@ Customers using more features than their plan entitles were flagged as **Billing
 
 **What it is:** Customers whose contracted MRR has not kept up with price increases, or who are still on expired promotional rates.
 
-**How I found it:** I created a DAX measure in Power BI comparing each customer's `contracted_mrr` against the `current_list_price` for their plan tier. Any active customer paying more than 10% below list price was flagged.
+**How I found it:** I created a DAX measure in Power BI comparing each customer's `contracted_mrr` against the `current_list_price` for their plan tier. Any active customer paying more than 10% below the list price was flagged.
 
 ```
 Price Gap % =
@@ -158,7 +158,7 @@ DIVIDE(
 
 **What it is:** Customers who reduced their plan or removed add-ons without the revenue team being notified.
 
-**How I found it:** Flagged customers whose `contracted_mrr` fell below the minimum floor expected for their stated plan tier — a signal that their subscription had been reduced but the tier label was not updated.
+**How I found it:** Flagged customers whose `contracted_mrr` fell below the minimum floor expected for their stated plan tier — a signal that their subscription had been reduced, but the tier label was not updated.
 
 **Key finding:** In 41% of downgrade cases, no customer success manager had contacted the account in the prior 90 days. The downgrade happened silently.
 
@@ -274,10 +274,10 @@ This is a common approach used by data analysts to make Power BI work more acces
 | Tool | Purpose | Why I Used It |
 |---|---|---|
 | **Excel** | Initial data inspection and spot-checking | Fast way to scan raw data before building the cleaning pipeline |
-| **Power Query** | Data cleaning, type fixing, custom columns, deduplication | Built into Power BI — keeps cleaning steps documented and reproducible |
+| **Power Query** | Data cleaning, type fixing, custom columns, deduplication | Built into Power BI keeps cleaning steps documented and reproducible |
 | **Power BI** | Main analysis, leakage classification, visualisation | Industry-standard BI tool with powerful filtering and drill-through |
 | **DAX** | Pricing gap measures, billing discrepancy columns, adoption score | Allows complex calculated fields that update dynamically with every filter |
-| **HTML / CSS / JS** | Standalone interactive dashboard for public sharing | Solves the Power BI sharing problem — works for anyone, anywhere, instantly |
+| **HTML / CSS / JS** | Standalone interactive dashboard for public sharing | Solves the Power BI sharing problem, works for anyone, anywhere, instantly |
 
 ---
 
