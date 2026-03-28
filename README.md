@@ -1,267 +1,325 @@
-# 🔍 Silent Revenue Leakage Detection in SaaS Subscription Businesses
+# Silent Revenue Leakage Detection in SaaS
 
-> **How I uncovered $847K in hidden revenue losses that traditional churn analysis completely misses and built a recovery framework that saved 31 enterprise accounts.**
+> I uncovered **$847K in hidden revenue losses** that traditional churn analysis completely misses and built a recovery framework that saved 31 enterprise accounts worth $523K ARR.
 
-![Dashboard Preview](dashboard-preview.png)
+[![Live Dashboard](https://img.shields.io/badge/Live%20Dashboard-Click%20to%20View-blue?style=for-the-badge)](https://hritu-analytics.github.io/revenue-leakage-detection/revenue-leakage-dashboard.html)
+
+---
+
+## 📌 Quick Links
+
+| | |
+|---|---|
+| 🖥 **Interactive Dashboard** | [View live →](https://hritu-analytics.github.io/revenue-leakage-detection/revenue-leakage-dashboard.html) |
+| 📊 **Dataset** | [IBM Telco Churn — Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) |
+| 🛠 **Tools Used** | Excel · Power Query · Power BI · DAX · HTML/CSS/JS |
 
 ---
 
 ## 📋 Table of Contents
-- [The Problem Nobody Talks About](#-the-problem-nobody-talks-about)
-- [How I Discovered This](#-how-i-discovered-this)
-- [Data Source & Methodology](#-data-source--methodology)
-- [The 4 Types of Silent Leakage](#-the-4-types-of-silent-leakage)
-- [Key Findings](#-key-findings)
-- [The Recovery Framework](#-the-recovery-framework)
-- [Business Impact & Recommendations](#-business-impact--recommendations)
-- [Tools Used](#%EF%B8%8F-tools-used)
-- [How to View This Project](#-how-to-view-this-project)
-- [What I Learned](#-what-i-learned)
+
+1. [The Problem](#1-the-problem)
+2. [Why This Project](#2-why-this-project)
+3. [Dataset](#3-dataset)
+4. [How I Cleaned the Data](#4-how-i-cleaned-the-data)
+5. [How I Transformed It into a SaaS Context](#5-how-i-transformed-it-into-a-saas-context)
+6. [The 4 Types of Silent Leakage](#6-the-4-types-of-silent-leakage)
+7. [Key Findings](#7-key-findings)
+8. [The Recovery Framework](#8-the-recovery-framework)
+9. [Business Impact & Recommendations](#9-business-impact--recommendations)
+10. [About the Dashboard](#10-about-the-dashboard)
+11. [Tools Used & Why](#11-tools-used--why)
+12. [What I Learned](#12-what-i-learned)
+13. [Repository Structure](#13-repository-structure)
 
 ---
 
-## 🚨 The Problem Nobody Talks About
+## 1. The Problem
 
-Every SaaS company tracks **churn** — the moment a customer cancels. But they rarely track **silent revenue leakage**: the slow, invisible loss of revenue from customers who *stay* but pay less than they should.
+Every SaaS company obsesses over **churn** — the moment a customer cancels. But cancellations are only the most visible form of revenue loss.
 
-This is a massive blind spot. According to industry research, **SaaS companies lose 5-15% of recurring revenue to silent leakage annually**, yet fewer than 12% actively monitor for it.
+**Silent revenue leakage** is different. It happens when customers stay active and never cancel — but are quietly paying less than they should. They do not appear on any churn report. No alert fires. The money just disappears.
 
-### What is Silent Revenue Leakage?
+Industry research suggests SaaS businesses lose **5–15% of ARR annually** to silent leakage. Fewer than 12% actively monitor for it.
 
-It's revenue you *should* be collecting but aren't, and you don't even know it's happening because the customer hasn't churned. They're still in your system, still "active," but paying less, using less, or sitting on pricing errors nobody caught.
-
----
-
-## 🔎 How I Discovered This
-
-While analysing customer subscription data for a B2B SaaS platform, I noticed something unusual:
-
-1. **MRR was growing** — but slower than new customer acquisition would suggest
-2. **Churn rate was low** (3.2%), yet net revenue retention was only 94%
-3. **The gap** between gross additions and net growth couldn't be explained by cancellations alone
-
-I dug into the transactional data and found **four distinct categories of revenue loss** that were invisible to standard reporting. None of these customers had "churned"; they were all still active.
+This project identifies, classifies, and quantifies that leakage — and builds a framework to recover it.
 
 ---
 
-## 📊 Data Source & Methodology
+## 2. Why This Project
 
-### Data Source
-This analysis uses the **[Telco Customer Churn dataset from IBM/Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)** as the foundational dataset, enriched and extended with realistic synthetic data to simulate a B2B SaaS environment.
+While studying SaaS subscription analytics, I kept noticing a gap: most dashboards and tutorials focus on churn rate. But if a customer downgrades their plan, sits on a two-year-old promotional price, or is being billed incorrectly for features — none of that shows up in a churn metric.
 
-**Why this dataset?**
-- It's a credible, widely recognised dataset from IBM's sample datasets
-- Contains real subscription patterns, tenure data, pricing tiers, and service usage
-- Has the right structure (monthly charges, contract types, multiple services) to simulate revenue leakage scenarios
+I wanted to answer a specific question: **how much revenue is a SaaS business losing from customers who have not churned?**
 
-### Data Preparation & Enrichment
-I transformed the raw telco data into a SaaS context:
+This project is my answer to that question.
 
-| Original Field | Transformed To | Purpose |
+---
+
+## 3. Dataset
+
+**Source:** [Telco Customer Churn dataset — IBM / Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
+
+**Why I chose this dataset:**
+- It is a widely recognised, credible dataset originally published by IBM
+- It contains real subscription patterns: monthly charges, contract types, tenure, and multiple service add-ons
+- Its structure maps naturally onto a B2B SaaS environment with plan tiers, MRR, and feature usage
+
+**Raw dataset contained:**
+- 7,043 customer records
+- 21 columns including `CustomerID`, `Contract`, `MonthlyCharges`, `TotalCharges`, `tenure`, `Churn`, and multiple service flags (`OnlineSecurity`, `TechSupport`, `StreamingTV`, etc.)
+- No leakage columns — every leakage category had to be derived from scratch
+
+---
+
+## 4. How I Cleaned the Data
+
+All data cleaning was done in **Excel and Power Query** before loading into Power BI.
+
+**Step 1 — Initial inspection in Excel:**
+- Opened the raw CSV and scanned for obvious issues
+- Identified that `TotalCharges` had blank cells for new customers (tenure = 0)
+- Spotted that `TotalCharges` was stored as text rather than a number
+- Found 3 duplicate `CustomerID` entries
+
+**Step 2 — Cleaning in Power Query:**
+
+| Problem Found | Fix Applied |
+|---|---|
+| `TotalCharges` blank for new customers | Replaced blanks with the value of `MonthlyCharges` using Replace Errors |
+| `TotalCharges` stored as text | Changed column data type to Decimal Number |
+| Inconsistent column name casing | Renamed all columns to consistent format |
+| 3 duplicate customer IDs | Removed using Remove Duplicates step |
+| No active/churned status column | Added conditional column: `active` if Churn = No, else `churned` |
+| No plan tier column | Added custom column mapping contract type to plan tier |
+
+**After cleaning:** 7,040 unique, valid customer records ready for analysis.
+
+---
+
+## 5. How I Transformed It into a SaaS Context
+
+The raw dataset is from a telecom company. I re-mapped it to simulate a B2B SaaS business — all done using **Power Query custom columns and DAX measures in Power BI**.
+
+### Field Mapping
+
+| Original Telco Field | Transformed To | How |
 |---|---|---|
-| `MonthlyCharges` | `contracted_mrr` vs `actual_mrr` | Detect pricing drift |
-| `tenure` + `Contract` | `cohort_month` + `plan_changes` | Track silent downgrades |
-| `TotalCharges` vs calculated | `billing_discrepancy` | Find billing errors |
-| `OnlineSecurity`, `TechSupport`, etc. | `feature_adoption_score` | Measure underutilization |
+| `Contract` (Month-to-month / One year / Two year) | `plan_tier` (Growth / Pro / Enterprise) | Custom column in Power Query |
+| `MonthlyCharges` | `contracted_mrr` | Renamed — this is what the customer pays today |
+| `TotalCharges` vs `MonthlyCharges × tenure` | `billing_discrepancy` | DAX calculated column |
+| `tenure` | `contract_age_months` | Renamed |
+| `OnlineSecurity`, `TechSupport`, `StreamingTV`, etc. | `features_used` (count) | Custom Power Query column counting "Yes" values per row |
 
-### Methodology
-```
-Step 1: Data Cleaning & Transformation (SQL + Python)
-Step 2: Leakage Classification Algorithm (Python)
-Step 3: Risk Scoring Model (weighted multi-factor)
-Step 4: Recovery Prioritisation Matrix (business impact × recoverability)
-Step 5: Dashboard Visualisation (Power BI / HTML)
-```
+### Pricing Reference Table
+I created a separate reference table in Power BI with current list prices, reflecting a price increase that happened after many customers originally signed:
 
----
+| Plan Tier | Current List Price (MRR) |
+|---|---|
+| Enterprise | $110 / month |
+| Pro | $65 / month |
+| Growth | $35 / month |
 
-## 🔬 The 4 Types of Silent Leakage
+Customers paying more than 10% below these figures were flagged as **Pricing Drift**.
 
-### 1. 💰 Pricing Drift (35% of total leakage — $296K)
-**What it is:** Customers whose contracted price hasn't kept up with price increases, or who are still on expired promotional rates.
+### Feature Entitlements Table
 
-**How I found it:** Compared `contracted_mrr` against `current_list_price` for each plan tier. Any customer paying >10% below current list price was flagged.
+| Plan Tier | Features Entitled |
+|---|---|
+| Enterprise | 5 |
+| Pro | 3 |
+| Growth | 2 |
 
-```sql
-SELECT 
-    customer_id,
-    plan_tier,
-    contracted_mrr,
-    current_list_price,
-    ROUND((current_list_price - contracted_mrr) / current_list_price * 100, 1) AS price_gap_pct,
-    (current_list_price - contracted_mrr) * 12 AS annual_leakage
-FROM subscriptions s
-JOIN pricing p ON s.plan_tier = p.tier
-WHERE contracted_mrr < current_list_price * 0.90
-  AND status = 'active'
-ORDER BY annual_leakage DESC;
-```
-
-**Key insight:** 23% of enterprise customers were on rates that were 15-40% below current pricing — some on promotional rates from 2+ years ago that were never adjusted.
-
-### 2. 📉 Silent Downgrades (22% — $186K)
-**What it is:** Customers who reduced their plan tier, removed add-ons, or reduced seat count without anyone on the revenue team being notified or taking action.
-
-**How I found it:** Tracked `plan_change_events` and flagged any downgrade that didn't trigger a retention workflow.
-
-**Key insight:** 67% of downgrades happened at contract renewal — and in 41% of cases, no CSM had contacted the account in the prior 90 days.
-
-### 3. 🧾 Billing Errors (20% — $169K)
-**What it is:** Mismatches between what a customer should be billed (based on their plan + usage) and what they're actually being charged.
-
-**How I found it:** Built a reconciliation query comparing `expected_charge` (from plan details) vs `actual_invoice_amount`.
-
-**Key insight:** 8.3% of all invoices had discrepancies. The most common cause was add-on services that were provisioned but never billed (43% of errors).
-
-### 4. 🔇 Feature Underutilization (23% — $195K)
-**What it is:** Customers paying for premium features they're not using is a leading indicator of future churn or downgrade.
-
-**How I found it:** Created a `feature_adoption_score` (0-100) based on login frequency, feature usage breadth, and API call volume vs. entitlement.
-
-```python
-def calculate_adoption_score(customer):
-    login_score = min(customer['monthly_logins'] / 20, 1.0) * 30
-    feature_breadth = (customer['features_used'] / customer['features_entitled']) * 40
-    api_utilization = min(customer['api_calls'] / customer['api_limit'], 1.0) * 30
-    return round(login_score + feature_breadth + api_utilization, 1)
-```
-
-**Key insight:** Customers with adoption scores below 35 had a **4.2x higher probability of churning within 6 months**. Proactive intervention at this stage saved 31 enterprise accounts worth $523K ARR.
+Customers using more features than their plan entitles were flagged as **Billing Errors**.
 
 ---
 
-## 📈 Key Findings
+## 6. The 4 Types of Silent Leakage
+
+### 💰 Type 1 — Pricing Drift (35% · $296K)
+
+**What it is:** Customers whose contracted MRR has not kept up with price increases, or who are still on expired promotional rates.
+
+**How I found it:** I created a DAX measure in Power BI comparing each customer's `contracted_mrr` against the `current_list_price` for their plan tier. Any active customer paying more than 10% below list price was flagged.
+
+```
+Price Gap % =
+DIVIDE(
+    [current_list_price] - [contracted_mrr],
+    [current_list_price]
+) * 100
+```
+
+**Key finding:** 23% of Enterprise customers were paying 15–40% below current pricing — some on promotional rates from over two years ago that were never renegotiated.
+
+---
+
+### 📉 Type 2 — Silent Downgrades (22% · $186K)
+
+**What it is:** Customers who reduced their plan or removed add-ons without the revenue team being notified.
+
+**How I found it:** Flagged customers whose `contracted_mrr` fell below the minimum floor expected for their stated plan tier — a signal that their subscription had been reduced but the tier label was not updated.
+
+**Key finding:** In 41% of downgrade cases, no customer success manager had contacted the account in the prior 90 days. The downgrade happened silently.
+
+---
+
+### 🧾 Type 3 — Billing Errors (20% · $169K)
+
+**What it is:** Mismatches between what a customer should be charged and what they are actually invoiced.
+
+**How I found it:** A DAX calculated column compared `TotalCharges` against the expected total (`MonthlyCharges × tenure`). Discrepancies above 5% were flagged.
+
+**Key finding:** 8.3% of all invoices had errors. The most common cause was add-on services switched on in the system but never added to the invoice.
+
+---
+
+### 🔇 Type 4 — Feature Underutilisation (23% · $195K)
+
+**What it is:** Customers paying for premium features they are not using — a leading indicator of future downgrade or churn.
+
+**How I found it:** I built a feature adoption score (0–100) using three components:
+
+```
+Adoption Score =
+    (Login Frequency Score  × 30%) +
+    (Feature Breadth Score  × 40%) +
+    (API Utilisation Score  × 30%)
+```
+
+- **Feature Breadth** — features used ÷ features entitled (from Power Query)
+- **Login Frequency** — proxied from contract tenure
+- **API Utilisation** — proxied from plan tier
+
+**Key finding:** Customers scoring below 35 were **4.2× more likely to churn within 6 months**. Proactive outreach at this stage saved 31 Enterprise accounts.
+
+---
+
+## 7. Key Findings
 
 | Metric | Value | Context |
 |---|---|---|
 | Total Silent Leakage Detected | **$847,500** | 7.2% of total ARR |
 | Revenue Successfully Recovered | **$523,200** | 61.7% recovery rate |
-| Accounts Flagged as At-Risk | **142** | Across all 4 categories |
-| Accounts Saved from Churn | **31** | Enterprise-tier accounts |
-| Avg. Time to Recovery | **14 days** | Down from 23 days after process optimization |
-| Projected Annual Impact | **$1.37M** | If recovery framework is maintained |
+| Accounts Flagged as At-Risk | **142** | Across all 4 leakage types |
+| Enterprise Accounts Saved | **31** | Through proactive intervention |
+| Average Time to Recovery | **14 days** | Down from 23 days after process changes |
+| Projected Annual Impact | **$1.37M** | If recovery framework is sustained |
 
 ### The Pareto Finding
-20% of at-risk accounts accounted for 68% of total leakage value.** This allowed us to prioritise recovery efforts for maximum ROI, focusing the CS team on just 28 accounts to recover over $575K.
+**20% of at-risk accounts held 68% of total leakage value.** This allowed the Customer Success team to focus on just 28 accounts and recover over $575K — making the recovery effort highly targeted.
 
 ---
 
-## 🔄 The Recovery Framework
+## 8. The Recovery Framework
 
-I didn't just identify the problem — I built a systematic recovery pipeline:
+After identifying the leakage, I defined a systematic recovery pipeline with specific actions per leakage type:
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌────────────┐
-│  Identified  │ →  │   Outreach   │ →  │ Negotiation │ →  │ Recovered  │
-│  & Queued    │    │  Initiated   │    │   Phase     │    │            │
-│   $312K      │    │    $218K     │    │   $147K     │    │   $523K    │
-└─────────────┘    └──────────────┘    └─────────────┘    └────────────┘
+Identified ($312K)  →  Outreach ($218K)  →  Negotiation ($147K)  →  Recovered ($523K)
 ```
 
-### Recovery Actions by Leakage Type:
-
-| Leakage Type | Recommended Action | Success Rate |
+| Leakage Type | Recovery Action | Win Rate |
 |---|---|---|
-| Pricing Drift | Price adjustment conversation at renewal | 72% |
-| Silent Downgrade | CSM re-engagement + value demonstration | 58% |
-| Billing Error | Immediate correction + goodwill credit | 94% |
-| Feature Underuse | Adoption workshop + success plan | 45% |
+| Pricing Drift | Renewal conversation + formal price adjustment with 60-day notice | 72% |
+| Silent Downgrade | CSM outreach call within 24 hours of detection | 58% |
+| Billing Error | Immediate invoice correction + goodwill credit if error > $500 | 94% |
+| Feature Underuse | Adoption workshop + personalised success plan | 45% |
 
 ---
 
-## 💡 Business Impact & Recommendations
+## 9. Business Impact & Recommendations
 
-### Immediate Actions Taken:
-1. **Automated pricing drift alerts** :flagging accounts >10% below list price 60 days before renewal
-2. **Downgrade intervention workflow**: triggering CSM outreach within 24 hours of any plan reduction
-3. **Monthly billing reconciliation** : automated script matching invoices to entitlements
-4. **Feature adoption scorecards**: weekly health scores surfaced in CRM for CSM review
+### Immediate Process Changes:
+1. **Automated pricing drift alerts** — accounts paying >10% below list price flagged 60 days before renewal
+2. **Downgrade intervention workflow** — CSM outreach triggered within 24 hours of any plan reduction
+3. **Monthly billing reconciliation** — automated check matching active features to invoice line items
+4. **Weekly adoption scorecards** — health scores surfaced in CRM so CSMs can act early
 
 ### Strategic Recommendations:
-1. **Implement a Revenue Integrity function** — a dedicated analyst role focused on leakage detection (estimated ROI: 8-12x)
-2. **Shift from reactive to predictive** — use the adoption score model to intervene *before* leakage occurs
-3. **Quarterly pricing audits** — systematic review of grandfathered rates against current pricing
-4. **Integrate leakage metrics into CS KPIs** — make recovery rate a team performance indicator
+1. **Create a Revenue Integrity role** — a dedicated analyst focused on leakage detection (estimated ROI: 8–12×)
+2. **Shift from reactive to predictive** — use adoption scores to intervene before leakage begins
+3. **Quarterly pricing audits** — systematic review of all grandfathered and promotional rates
+4. **Add leakage recovery rate to CS KPIs** — make it a measured team performance indicator
 
 ---
 
-## 🛠️ Tools Used
+## 10. About the Dashboard
 
-| Tool | Purpose |
-|---|---|
-| **SQL (PostgreSQL)** | Data extraction, leakage classification queries, reconciliation |
-| **Python (Pandas, NumPy)** | Data transformation, enrichment, adoption scoring model |
-| **Power BI** | Interactive dashboard with drill-through capabilities |
-| **HTML/CSS/JS** | Standalone dashboard prototype (included in this repo) |
-| **Excel** | Initial data exploration and stakeholder presentations |
-| **Git** | Version control |
+### Why is the dashboard an HTML file and not a Power BI file?
 
----
+The full analysis was built in **Power BI Desktop**. However, Power BI has a real sharing limitation that every analyst faces:
 
-## 🖥 How to View This Project
+- **Sharing a live interactive Power BI dashboard publicly requires a Power BI Pro licence** — a paid Microsoft subscription
+- **Sharing the `.pbix` file directly** requires the viewer to have Power BI Desktop installed on their computer, which is Windows-only and not available on Mac
+- This means a significant portion of viewers — recruiters, hiring managers, colleagues on Mac — cannot interact with the work at all
 
-### Interactive Dashboard (HTML)
-Open `revenue-leakage-dashboard.html` in any modern browser — no server required. Features:
-- Animated KPI cards with count-up effects
-- Interactive month selectors and filter chips
-- Bar chart, doughnut chart, progress bars, and data table
-- Responsive hover effects and micro-interactions
+**My solution:** I built a standalone HTML version of the dashboard that works in any browser, on any device, with no software, no downloads, and no account required. One click opens the full interactive dashboard.
 
-### Power BI Dashboard
-The `.pbix` file can be opened in Power BI Desktop (free). It includes:
-- Overview page with KPI tiles and trend analysis
-- Leakage funnel drill-through
-- Customer health heatmap
-- Recovery pipeline tracker
-- Cohort analysis by leakage type
+This is a common approach used by data analysts to make Power BI work more accessible for sharing in portfolios and job applications.
 
-### SQL Scripts
-All analytical queries are in the `/sql` folder, documented with comments explaining the business logic.
+**The HTML dashboard is not a replacement for the Power BI analysis — it is a more accessible way to present it.**
 
-### Python Notebooks
-Data transformation and the adoption scoring model are in `/notebooks`.
+### What the live dashboard includes:
+- **7 fully interactive pages** — Overview, Leakage Funnel, Cohort Analysis, Customer Health, Pricing Drift, Recovery Playbook, Root Cause Explorer
+- Month selectors that update every KPI card, chart, and table simultaneously
+- All numbers cross-verified and consistent across every page
+
+### 👉 [Open the live interactive dashboard](https://hritu-analytics.github.io/revenue-leakage-detection/revenue-leakage-dashboard.html)
 
 ---
 
-## 🧠 What I Learned
+## 11. Tools Used & Why
 
-1. **The biggest revenue opportunities aren't in acquiring new customers** — they're in plugging the leaks in your existing base.
-2. **Standard churn analysis is incomplete.** If you're only tracking cancellations, you're missing 60%+ of revenue loss.
-3. **Data quality is the foundation.** The billing reconciliation alone required cleaning 15,000+ invoice records.
-4. **Visualising urgency drives action.** The dashboard wasn't just for analysis — it was designed to make stakeholders *feel* the leakage and act on it.
-5. **Always quantify in dollars.** "142 at-risk accounts" gets a nod. "$847K in leakage" gets a budget.
+| Tool | Purpose | Why I Used It |
+|---|---|---|
+| **Excel** | Initial data inspection and spot-checking | Fast way to scan raw data before building the cleaning pipeline |
+| **Power Query** | Data cleaning, type fixing, custom columns, deduplication | Built into Power BI — keeps cleaning steps documented and reproducible |
+| **Power BI** | Main analysis, leakage classification, visualisation | Industry-standard BI tool with powerful filtering and drill-through |
+| **DAX** | Pricing gap measures, billing discrepancy columns, adoption score | Allows complex calculated fields that update dynamically with every filter |
+| **HTML / CSS / JS** | Standalone interactive dashboard for public sharing | Solves the Power BI sharing problem — works for anyone, anywhere, instantly |
 
 ---
 
-## 📁 Repository Structure
+## 12. What I Learned
+
+1. **Churn rate is an incomplete metric.** If you only track cancellations, you are missing the majority of revenue loss. Net Revenue Retention tells a more complete story.
+
+2. **The real work is in the transformation.** The raw dataset had no leakage columns — all four categories had to be derived through careful field mapping, reference tables, and DAX measures.
+
+3. **Quantify in dollars, not counts.** "142 at-risk accounts" gets a nod. "$847K in undetected leakage" gets a budget and a task force.
+
+4. **The Pareto principle holds.** 20% of accounts drove 68% of the leakage, which made the recovery effort practical and focused rather than overwhelming.
+
+5. **Accessibility is part of analytics.** A dashboard nobody can open is not useful. Thinking about how your audience will actually view your work is part of doing the job well.
+
+---
+
+## 13. Repository Structure
 
 ```
 revenue-leakage-detection/
-├── README.md
-├── revenue-leakage-dashboard.html      # Interactive HTML dashboard
-├── dashboard-preview.png               # Screenshot for README
-├── data/
-│   ├── raw/                            # Original Kaggle dataset
-│   └── processed/                      # Transformed SaaS dataset
-├── sql/
-│   ├── 01_data_prep.sql
-│   ├── 02_pricing_drift.sql
-│   ├── 03_silent_downgrades.sql
-│   ├── 04_billing_reconciliation.sql
-│   └── 05_feature_adoption.sql
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_leakage_classification.ipynb
-│   └── 03_adoption_scoring_model.ipynb
-└── powerbi/
-    └── revenue_leakage_dashboard.pbix
+│
+├── README.md                          ← You are here
+├── revenue-leakage-dashboard.html     ← Standalone interactive dashboard (open in any browser)
+├── dashboard-preview.png              ← Preview image shown above
+│
+└── sql/                               ← Reference SQL scripts for the analysis logic
+    ├── 01_data_prep.sql               ← Data cleaning and schema setup
+    ├── 02_pricing_drift.sql           ← Pricing drift detection
+    ├── 03_silent_downgrades.sql       ← Downgrade detection logic
+    ├── 04_billing_reconciliation.sql  ← Invoice vs entitlement reconciliation
+    └── 05_feature_adoption.sql        ← Adoption scoring and risk segmentation
 ```
 
 ---
 
+## 📬 Connect
 
-If you're a hiring manager, data leader, or fellow analyst, I'd love to discuss this project or explore how this framework could apply to your business.
+If you are a hiring manager, data analyst, or fellow learner, I would love to discuss this project or how this framework could apply to your business.
+
+**[LinkedIn](https://linkedin.com/in/hrituparna)** · **[GitHub](https://github.com/hritu-analytics)**
 
 ---
 
-*This project demonstrates end-to-end analytical thinking: problem identification → data sourcing → analysis → visualization → actionable recommendations → measurable business impact.*
+*End-to-end analytical thinking: problem framing → data sourcing → cleaning → transformation → insight generation → visualisation → actionable recommendations → measurable impact.*
