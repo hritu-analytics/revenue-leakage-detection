@@ -36,7 +36,7 @@
 
 ## 1. The Problem
 
-Every SaaS company obsesses over **churn** — the moment a customer cancels. But cancellations are only the most visible form of revenue loss.
+Every SaaS company obsesses over **churn** the moment a customer cancels. But cancellations are only the most visible form of revenue loss.
 
 **Silent revenue leakage** is different. It happens when customers stay active and never cancel,  but are quietly paying less than they should. They do not appear on any churn report. No alert fires. The money just disappears.
 
