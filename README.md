@@ -6,7 +6,7 @@
 
 ---
 
-## 📌 Quick Links
+## Quick Links
 
 | | |
 |---|---|
